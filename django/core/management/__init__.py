@@ -4,7 +4,8 @@ from optparse import OptionParser, NO_DEFAULT
 import imp
 
 import django
-from django.core.management.base import BaseCommand, CommandError, handle_default_options
+from django.core.management.base import BaseCommand, CommandError, \
+    AppCommand, handle_default_options
 from django.utils.importlib import import_module
 
 # For backwards compatibility: get_version() used to be in this module.
@@ -303,36 +304,35 @@ class ManagementUtility(object):
         # subcommand options
         # special case: the 'help' subcommand has no options
         elif cwords[0] in subcommands and cwords[0] != 'help':
-            subcommand_cls = self.fetch_command(cwords[0])
+            subcommand_obj = self.fetch_command(cwords[0])
             # special case: 'runfcgi' stores additional options as
             # 'key=value' pairs
             if cwords[0] == 'runfcgi':
                 from django.core.servers.fastcgi import FASTCGI_OPTIONS
                 options += [(k, 1) for k in FASTCGI_OPTIONS]
             # special case: add the names of installed apps to options
-            elif cwords[0] in ('dumpdata', 'reset', 'sql', 'sqlall',
-                               'sqlclear', 'sqlcustom', 'sqlindexes',
-                               'sqlreset', 'sqlsequencereset', 'test'):
+            elif (isinstance(subcommand_obj, AppCommand) or
+                  cwords[0] in ('dumpdata', 'test')):
                 try:
                     from django.conf import settings
                     # Get the last part of the dotted path as the app name.
-                    options += [(a.split('.')[-1], 0) for a in settings.INSTALLED_APPS]
+                    options += [(app.split('.')[-1], 0)
+                                for app in settings.INSTALLED_APPS]
                 except ImportError:
                     # Fail silently if DJANGO_SETTINGS_MODULE isn't set. The
                     # user will find out once they execute the command.
                     pass
             options += [(s_opt.get_opt_string(), s_opt.nargs) for s_opt in
-                        subcommand_cls.option_list]
+                        subcommand_obj.option_list]
             # filter out previously specified options from available options
             prev_opts = [x.split('=')[0] for x in cwords[1:cword-1]]
-            options = filter(lambda (x, v): x not in prev_opts, options)
+            options = [opt for opt in options if opt[0] not in prev_opts]
 
             # filter options by current input
-            options = [(k, v) for k, v in options if k.startswith(curr)]
-            for option in options:
-                opt_label = option[0]
+            options = [opt for opt in options if opt[0].startswith(curr)]
+            for opt_label, n_args in options:
                 # append '=' to options which require args
-                if option[1]:
+                if n_args:
                     opt_label += '='
                 print opt_label
         sys.exit(1)
