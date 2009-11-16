@@ -9,24 +9,18 @@
     width: 100%;
 }
 
-.change-list .filtered table {
+#changelist.filtered table {
     border-right: 1px solid #ddd;
 }
 
-.change-list .filtered {
+#changelist.filtered {
     min-height: 400px;
-}
-
-.change-list .filtered {
     background: white url(../img/admin/changelist-bg.gif) top right repeat-y !important;
+    padding-right:160px;
+    width:auto;
 }
 
-.change-list .filtered table, .change-list .filtered .paginator, .filtered #toolbar, .filtered div.xfull {
-    margin-right: 160px !important;
-    width: auto !important;
-}
-
-.change-list .filtered table tbody th {
+#changelist.filtered table tbody th {
     padding-right: 1em;
 }
 
@@ -42,7 +36,7 @@
     overflow: hidden;
 }
 
-.change-list .filtered .paginator {
+#changelist.filtered .paginator {
     border-right: 1px solid #ddd;
 }
 
@@ -224,7 +218,6 @@
 /* ACTIONS */
 
 .filtered .actions {
-    margin-right: 160px !important;
     border-right: 1px solid #ddd;
 }
 
