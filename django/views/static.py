@@ -16,19 +16,26 @@ from django.http import Http404, HttpResponse, HttpResponseRedirect, HttpRespons
 from django.template import Template, Context, TemplateDoesNotExist
 from django.utils.http import http_date
 
-def serve(request, path, document_root=None, show_indexes=False):
+def serve(request, path, document_root, show_indexes=False, index_prefix=None):
     """
     Serve static files below a given point in the directory structure.
 
-    To use, put a URL pattern such as::
+    To use, put a URL pattern in your URLconf such as::
 
-        (r'^(?P<path>.*)$', 'django.views.static.serve', {'document_root' : '/path/to/my/files/'})
+        url(r'^(?P<path>.*)$', 'django.views.static.serve',
+            {'document_root': '/path/to/my/files/'})
 
-    in your URLconf. You must provide the ``document_root`` param. You may
-    also set ``show_indexes`` to ``True`` if you'd like to serve a basic index
-    of the directory.  This index view will use the template hardcoded below,
-    but if you'd like to override it, you can create a template called
-    ``static/directory_index.html``.
+    You must provide the ``document_root`` argument.
+
+    Set ``show_indexes`` to ``True`` to serve a basic index of directories. The
+    index view uses a hard-coded template by default. To use a custom index,
+    create a template called ``static/directory_index``. Use the
+    ``index_prefix`` argument to display the correct full path in indexes, for
+    example::
+
+        url(r'^(?P<index_prefix>static/)(?P<path>.*)$',
+            'django.views.static.serve',
+            {'document_root': '/path/to/static/files/', 'show_indexes': True})
     """
 
     # Clean up given path to only allow serving files below document_root.
@@ -50,7 +57,7 @@ def serve(request, path, document_root=None, show_indexes=False):
     fullpath = os.path.join(document_root, newpath)
     if os.path.isdir(fullpath):
         if show_indexes:
-            return directory_index(newpath, fullpath)
+            return directory_index(newpath, fullpath, index_prefix)
         raise Http404, "Directory indexes are not allowed here."
     if not os.path.exists(fullpath):
         raise Http404, '"%s" does not exist' % fullpath
@@ -89,21 +96,30 @@ DEFAULT_DIRECTORY_INDEX_TEMPLATE = """
 </html>
 """
 
-def directory_index(path, fullpath):
+def directory_index(path, fullpath, prefix=None):
     try:
         t = loader.select_template(['static/directory_index.html',
                 'static/directory_index'])
     except TemplateDoesNotExist:
-        t = Template(DEFAULT_DIRECTORY_INDEX_TEMPLATE, name='Default directory index template')
+        t = Template(DEFAULT_DIRECTORY_INDEX_TEMPLATE,
+                     name='Default directory index template')
     files = []
+    dirs = []
     for f in os.listdir(fullpath):
         if not f.startswith('.'):
             if os.path.isdir(os.path.join(fullpath, f)):
-                f += '/'
-            files.append(f)
+                dirs.append('%s/' % f)
+            else:
+                files.append(f)
+    dirs.sort()
+    files.sort()
+    directory = '%s%s' % (prefix or '', path)
+    directory = path
+    if not directory.endswith('/'):
+        directory = '%s/' % directory
     c = Context({
-        'directory' : path + '/',
-        'file_list' : files,
+        'directory' : directory,
+        'file_list' : dirs + files,
     })
     return HttpResponse(t.render(c))
 
