@@ -130,18 +130,33 @@ class ChangeList(object):
         self.multi_page = multi_page
         self.paginator = paginator
 
-    def get_ordering(self):
-        lookup_opts, params = self.lookup_opts, self.params
-        # For ordering, first check the "ordering" parameter in the admin
-        # options, then check the object's default ordering. If neither of
-        # those exist, order descending by ID by default. Finally, look for
-        # manually-specified ordering from the query string.
-        ordering = self.model_admin.ordering or lookup_opts.ordering or ['-' + lookup_opts.pk.name]
+    @property
+    def default_ordering(self):
+        """
+        Returns the default ordering list.
+        
+        First try the "ordering" parameter in the admin
+        options, then try the object's default ordering. If neither of
+        those exist, order descending by ID by default.
+        """
+        lookup_opts = self.lookup_opts
+        return (self.model_admin.ordering or lookup_opts.ordering or
+                ['-' + lookup_opts.pk.name])
 
-        if ordering[0].startswith('-'):
-            order_field, order_type = ordering[0][1:], 'desc'
+    def get_ordering(self):
+        """
+        Returns a two part tuple containing the first order field and the order
+        type (either "asc" or "desc").
+        """
+        lookup_opts, params = self.lookup_opts, self.params
+
+        # First, use the first field as specified in the default ordering.
+        order_field = self.default_ordering[0]
+        if order_field.startswith('-'):
+            order_field, order_type = order_field[1:], 'desc'
         else:
-            order_field, order_type = ordering[0], 'asc'
+            order_type = 'asc'
+        # Next, look for manually-specified ordering from the query string.
         if ORDER_VAR in params:
             try:
                 field_name = self.list_display[int(params[ORDER_VAR])]
@@ -164,7 +179,8 @@ class ChangeList(object):
                     order_field = f.name
             except (IndexError, ValueError):
                 pass # Invalid ordering specified. Just use the default.
-        if ORDER_TYPE_VAR in params and params[ORDER_TYPE_VAR] in ('asc', 'desc'):
+        if ORDER_TYPE_VAR in params and (params[ORDER_TYPE_VAR] in
+                                         ('asc', 'desc')):
             order_type = params[ORDER_TYPE_VAR]
         return order_field, order_type
 
@@ -213,9 +229,13 @@ class ChangeList(object):
                             qs = qs.select_related()
                             break
 
-        # Set ordering.
+        # Set ordering, preserving any secondary ordering fields.
         if self.order_field:
-            qs = qs.order_by('%s%s' % ((self.order_type == 'desc' and '-' or ''), self.order_field))
+            order_field = '%s%s' % (self.order_type == 'desc' and '-' or '',
+                                    self.order_field)
+            secondary_fields = [field for field in self.ordering
+                                if field.lstrip('-') != self.order_field]
+            qs = qs.order_by(order_field, *secondary_fields)
 
         # Apply keyword searches.
         def construct_search(field_name):
