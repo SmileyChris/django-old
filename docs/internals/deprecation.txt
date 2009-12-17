@@ -13,6 +13,10 @@ their deprecation, as per the :ref:`Django deprecation policy
           hooking up admin URLs.  This has been deprecated since the 1.1
           release.
 
+        * Authentication backends need to define the boolean attribute
+          ``supports_object_permissions``. The old backend style is deprecated
+          since the 1.2 release.
+
     * 1.4
         * ``CsrfResponseMiddleware``.  This has been deprecated since the 1.2
           release, in favour of the template tag method for inserting the CSRF
@@ -27,6 +31,24 @@ their deprecation, as per the :ref:`Django deprecation policy
 
         * The many to many SQL generation functions on the database backends
           will be removed.  These have been deprecated since the 1.2 release.
+
+        * The ``Message`` model (in ``django.contrib.auth``), its related
+          manager in the ``User`` model (``user.message_set``), and the
+          associated methods (``user.message_set.create()`` and
+          ``user.get_and_delete_messages()``), which have
+          been deprecated since the 1.2 release, will be removed.  The
+          :ref:`messages framework <ref-contrib-messages>` should be used
+          instead.
+
+        * Authentication backends need to support the ``obj`` parameter for
+          permission checking. The ``supports_object_permissions`` variable
+          is not checked any longer and can be removed.
+
+        * The ability to specify a callable template loader rather than a
+          ``Loader`` class will be removed, as will the ``load_template_source``
+          functions that are included with the built in template loaders for
+          backwards compatibility. These have been deprecated since the 1.2
+          release.
 
     * 2.0
         * ``django.views.defaults.shortcut()``. This function has been moved

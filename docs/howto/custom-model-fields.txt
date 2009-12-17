@@ -5,6 +5,7 @@ Writing custom model fields
 ===========================
 
 .. versionadded:: 1.0
+.. currentmodule:: django.db.models
 
 Introduction
 ============
@@ -39,6 +40,8 @@ are traditionally called *north*, *east*, *south* and *west*.  Our class looks
 something like this::
 
     class Hand(object):
+        """A hand of cards (bridge style)"""
+
         def __init__(self, north, east, south, west):
             # Input parameters are lists of cards ('Ah', '9s', etc)
             self.north = north
@@ -163,6 +166,9 @@ behave like any existing field, so we'll subclass directly from
     from django.db import models
 
     class HandField(models.Field):
+
+        description = "A hand of cards (bridge style)"
+
         def __init__(self, *args, **kwargs):
             kwargs['max_length'] = 104
             super(HandField, self).__init__(*args, **kwargs)
@@ -244,6 +250,9 @@ simple: make sure your field subclass uses a special metaclass:
 For example::
 
     class HandField(models.Field):
+
+        description = "A hand of cards (bridge style)"
+
         __metaclass__ = models.SubfieldBase
 
         def __init__(self, *args, **kwargs):
@@ -251,6 +260,22 @@ For example::
 
 This ensures that the :meth:`to_python` method, documented below, will always be
 called when the attribute is initialized.
+
+
+Documenting your Custom Field
+-----------------------------
+
+.. class:: django.db.models.Field
+
+.. attribute:: description
+
+As always, you should document your field type, so users will know what it is.
+In addition to providing a docstring for it, which is useful for developers,
+you can also allow users of the admin app to see a short description of the
+field type via the ``django.contrib.admindocs`` application. To do this simply 
+provide descriptive text in a ``description`` class attribute of your custom field. 
+In the above example, the type description displayed by the ``admindocs`` application 
+for a ``HandField`` will be 'A hand of cards (bridge style)'.
 
 Useful methods
 --------------

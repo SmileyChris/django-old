@@ -6,6 +6,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.admin import widgets
 from django.contrib.admin import helpers
 from django.contrib.admin.util import unquote, flatten_fieldsets, get_deleted_objects, model_ngettext, model_format_dict
+from django.contrib import messages
 from django.views.decorators.csrf import csrf_protect
 from django.core.exceptions import PermissionDenied
 from django.db import models, transaction
@@ -541,9 +542,9 @@ class ModelAdmin(BaseModelAdmin):
     def message_user(self, request, message):
         """
         Send a message to the user. The default implementation
-        posts a message using the auth Message object.
+        posts a message using the django.contrib.messages backend.
         """
-        request.user.message_set.create(message=message)
+        messages.info(request, message)
 
     def save_form(self, request, form, change):
         """
@@ -691,6 +692,9 @@ class ModelAdmin(BaseModelAdmin):
             # perform an action on it, so bail.
             selected = request.POST.getlist(helpers.ACTION_CHECKBOX_NAME)
             if not selected:
+                # Reminder that something needs to be selected or nothing will happen
+                msg = _("Items must be selected in order to perform actions on them. No items have been changed.")
+                self.message_user(request, msg)
                 return None
 
             response = func(self, request, queryset.filter(pk__in=selected))
@@ -702,6 +706,9 @@ class ModelAdmin(BaseModelAdmin):
                 return response
             else:
                 return HttpResponseRedirect(".")
+        else:
+            msg = _("No action selected.")
+            self.message_user(request, msg)
 
     @csrf_protect
     @transaction.commit_on_success
@@ -1058,7 +1065,7 @@ class ModelAdmin(BaseModelAdmin):
             content_type__id__exact = ContentType.objects.get_for_model(model).id
         ).select_related().order_by('action_time')
         # If no history was found, see whether this object even exists.
-        obj = get_object_or_404(model, pk=object_id)
+        obj = get_object_or_404(model, pk=unquote(object_id))
         context = {
             'title': _('Change history: %s') % force_unicode(obj),
             'action_list': action_list,

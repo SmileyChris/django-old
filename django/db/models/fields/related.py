@@ -692,6 +692,7 @@ class ManyToManyRel(object):
 
 class ForeignKey(RelatedField, Field):
     empty_strings_allowed = False
+    description = ugettext_lazy("Foreign Key (type determined by related field)")
     def __init__(self, to, to_field=None, rel_class=ManyToOneRel, **kwargs):
         try:
             to_name = to._meta.object_name.lower()
@@ -794,6 +795,7 @@ class OneToOneField(ForeignKey):
     always returns the object pointed to (since there will only ever be one),
     rather than returning a list.
     """
+    description = ugettext_lazy("One-to-one relationship")
     def __init__(self, to, to_field=None, **kwargs):
         kwargs['unique'] = True
         super(OneToOneField, self).__init__(to, to_field, OneToOneRel, **kwargs)
@@ -847,6 +849,7 @@ def create_many_to_many_intermediary_model(field, klass):
     })
 
 class ManyToManyField(RelatedField, Field):
+    description = ugettext_lazy("Many-to-many relationship")
     def __init__(self, to, **kwargs):
         try:
             assert not to._meta.abstract, "%s cannot define a relation with abstract class %s" % (self.__class__.__name__, to._meta.object_name)

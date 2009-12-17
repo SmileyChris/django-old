@@ -234,6 +234,17 @@ name to ``dumpdata``, the dumped output will be restricted to that model,
 rather than the entire application. You can also mix application names and
 model names.
 
+.. django-admin-option:: --natural
+
+.. versionadded:: 1.2
+
+Use :ref:`natural keys <topics-serialization-natural-keys>` to represent
+any foreign key and many-to-many relationship with a model that provides
+a natural key definition. If you are dumping ``contrib.auth`` ``Permission``
+objects or ``contrib.contenttypes`` ``ContentType`` objects, you should
+probably be using this flag.
+
+
 flush
 -----
 
@@ -695,6 +706,14 @@ test <app or test identifier>
 
 Runs tests for all installed models. See :ref:`topics-testing` for more
 information.
+
+--failfast
+~~~~~~~~~~
+
+.. versionadded:: 1.2
+
+Use the ``--failfast`` option to stop running tests and report the failure
+immediately after a test fails.
 
 testserver <fixture fixture ...>
 --------------------------------
