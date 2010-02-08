@@ -200,6 +200,7 @@ class ModelAdmin(BaseModelAdmin):
     inlines = []
 
     # Custom templates (designed to be over-ridden in subclasses)
+    add_form_template = None
     change_form_template = None
     change_list_template = None
     delete_confirmation_template = None
@@ -267,7 +268,7 @@ class ModelAdmin(BaseModelAdmin):
 
         js = ['js/core.js', 'js/admin/RelatedObjectLookups.js']
         if self.actions is not None:
-            js.extend(['js/getElementsBySelector.js', 'js/actions.js'])
+            js.extend(['js/jquery.min.js', 'js/actions.min.js'])
         if self.prepopulated_fields:
             js.append('js/urlify.js')
         if self.opts.get_ordered_objects():
@@ -579,12 +580,12 @@ class ModelAdmin(BaseModelAdmin):
         """
         messages.info(request, message)
 
-    def save_form(self, request, form, change, commit=False):
+    def save_form(self, request, form, change):
         """
         Given a ModelForm return an unsaved instance. ``change`` is True if
         the object is being changed, and False if it's being added.
         """
-        return form.save(commit=commit)
+        return form.save(commit=False)
 
     def save_model(self, request, obj, form, change):
         """
@@ -618,8 +619,12 @@ class ModelAdmin(BaseModelAdmin):
             'save_on_top': self.save_on_top,
             'root_path': self.admin_site.root_path,
         })
+        if add and self.add_form_template is not None:
+            form_template = self.add_form_template
+        else:
+            form_template = self.change_form_template
         context_instance = template.RequestContext(request, current_app=self.admin_site.name)
-        return render_to_response(self.change_form_template or [
+        return render_to_response(form_template or [
             "admin/%s/%s/change_form.html" % (app_label, opts.object_name.lower()),
             "admin/%s/change_form.html" % app_label,
             "admin/change_form.html"
@@ -719,18 +724,24 @@ class ModelAdmin(BaseModelAdmin):
         # If the form's valid we can handle the action.
         if action_form.is_valid():
             action = action_form.cleaned_data['action']
+            select_across = action_form.cleaned_data['select_across']
             func, name, description = self.get_actions(request)[action]
 
             # Get the list of selected PKs. If nothing's selected, we can't
-            # perform an action on it, so bail.
+            # perform an action on it, so bail. Except we want to perform
+            # the action explicitely on all objects.
             selected = request.POST.getlist(helpers.ACTION_CHECKBOX_NAME)
-            if not selected:
+            if not selected and not select_across:
                 # Reminder that something needs to be selected or nothing will happen
                 msg = _("Items must be selected in order to perform actions on them. No items have been changed.")
                 self.message_user(request, msg)
                 return None
 
-            response = func(self, request, queryset.filter(pk__in=selected))
+            if not select_across:
+                # Perform the action only on the selected objects
+                queryset = queryset.filter(pk__in=selected)
+
+            response = func(self, request, queryset)
 
             # Actions may return an HttpResponse, which will be used as the
             # response from the POST. If not, we'll be a good little HTTP
@@ -758,11 +769,7 @@ class ModelAdmin(BaseModelAdmin):
         if request.method == 'POST':
             form = ModelForm(request.POST, request.FILES)
             if form.is_valid():
-                # Save the object, even if inline formsets haven't been
-                # validated yet. We need to pass the valid model to the
-                # formsets for validation. If the formsets do not validate, we
-                # will delete the object.
-                new_object = self.save_form(request, form, change=False, commit=True)
+                new_object = self.save_form(request, form, change=False)
                 form_validated = True
             else:
                 form_validated = False
@@ -779,15 +786,13 @@ class ModelAdmin(BaseModelAdmin):
                                   prefix=prefix, queryset=inline.queryset(request))
                 formsets.append(formset)
             if all_valid(formsets) and form_validated:
+                self.save_model(request, new_object, form, change=False)
+                form.save_m2m()
                 for formset in formsets:
                     self.save_formset(request, form, formset, change=False)
 
                 self.log_addition(request, new_object)
                 return self.response_add(request, new_object)
-            elif form_validated:
-                # The form was valid, but formsets were not, so delete the
-                # object we saved above.
-                new_object.delete()
         else:
             # Prepare the dict of initial data from the request.
             # We have to special-case M2Ms as a list of comma-separated PKs.
@@ -1188,7 +1193,7 @@ class InlineModelAdmin(BaseModelAdmin):
 
     def _media(self):
         from django.conf import settings
-        js = []
+        js = ['js/jquery.min.js', 'js/inlines.min.js']
         if self.prepopulated_fields:
             js.append('js/urlify.js')
         if self.filter_vertical or self.filter_horizontal:
