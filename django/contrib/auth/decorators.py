@@ -14,17 +14,17 @@ def user_passes_test(test_func, login_url=None, redirect_field_name=REDIRECT_FIE
     redirecting to the log-in page if necessary. The test should be a callable
     that takes the user object and returns True if the user passes.
     """
-    if not login_url:
-        from django.conf import settings
-        login_url = settings.LOGIN_URL
-
     def decorator(view_func):
         def _wrapped_view(request, *args, **kwargs):
             if test_func(request.user):
                 return view_func(request, *args, **kwargs)
             path = urlquote(request.get_full_path())
-            tup = login_url, redirect_field_name, path
-            return HttpResponseRedirect('%s?%s=%s' % tup)
+            url = login_url
+            if not url:
+                from django.conf import settings
+                url = settings.LOGIN_URL
+            return HttpResponseRedirect('%s?%s=%s' % (url, redirect_field_name,
+                                                      path))
         return wraps(view_func)(_wrapped_view)
     return decorator
 
