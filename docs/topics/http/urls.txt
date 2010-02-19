@@ -827,6 +827,8 @@ namespaces into URLs on specific application instances, according to the
 reverse_lazy()
 --------------
 
+.. versionadded:: 1.2
+
 A lazily evaluated version of `reverse()`_.
 
 It is useful for when you need to use a URL reversal before Django's URL names
@@ -837,8 +839,6 @@ map is loaded. Some common cases where this method is necessary are:
 
 * providing a reversed URL to a decorator (such as the ``login_url`` argument
   for the ``django.contrib.auth.decorators.permission_required`` decorator).
-
-.. versionadded:: 1.2
 
 resolve()
 ---------
