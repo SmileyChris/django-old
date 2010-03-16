@@ -406,13 +406,13 @@ class BoundField(StrAndUnicode):
             return self.as_widget() + self.as_hidden(only_initial=True)
         return self.as_widget()
 
-    def _errors(self):
+    @property
+    def errors(self):
         """
         Returns an ErrorList for this field. Returns an empty ErrorList
         if there are none.
         """
         return self.form.errors.get(self.name, self.form.error_class())
-    errors = property(_errors)
 
     def as_widget(self, widget=None, attrs=None, only_initial=False):
         """
@@ -429,20 +429,11 @@ class BoundField(StrAndUnicode):
                 attrs['id'] = auto_id
             else:
                 attrs['id'] = self.html_initial_id
-        if not self.form.is_bound:
-            data = self.form.initial.get(self.name, self.field.initial)
-            if callable(data):
-                data = data()
-        else:
-            if isinstance(self.field, FileField) and self.data is None:
-                data = self.form.initial.get(self.name, self.field.initial)
-            else:
-                data = self.data
         if not only_initial:
             name = self.html_name
         else:
             name = self.html_initial_name
-        return widget.render(name, data, attrs=attrs)
+        return widget.render(name, self.value, attrs=attrs)
 
     def as_text(self, attrs=None, **kwargs):
         """
@@ -460,12 +451,27 @@ class BoundField(StrAndUnicode):
         """
         return self.as_widget(self.field.hidden_widget(), attrs, **kwargs)
 
-    def _data(self):
+    @property
+    def data(self):
         """
         Returns the data for this BoundField, or None if it wasn't given.
         """
         return self.field.widget.value_from_datadict(self.form.data, self.form.files, self.html_name)
-    data = property(_data)
+
+    @property
+    def value(self):
+        """
+        Returns the value used to render this BoundField (for both bound and
+        unbound forms).
+        """
+        if self.form.is_bound:
+            if isinstance(self.field, FileField) and self.data is None:
+                return self.form.initial.get(self.name, self.field.initial)
+            return self.data
+        value = self.form.initial.get(self.name, self.field.initial)
+        if callable(value):
+            value = value()
+        return value
 
     def label_tag(self, contents=None, attrs=None):
         """
@@ -496,12 +502,13 @@ class BoundField(StrAndUnicode):
             extra_classes.add(self.form.required_css_class)
         return ' '.join(extra_classes)
 
-    def _is_hidden(self):
+    @property
+    def is_hidden(self):
         "Returns True if this BoundField's widget is hidden."
         return self.field.widget.is_hidden
-    is_hidden = property(_is_hidden)
 
-    def _auto_id(self):
+    @property
+    def auto_id(self):
         """
         Calculates and returns the ID attribute for this BoundField, if the
         associated Form has specified auto_id. Returns an empty string otherwise.
@@ -512,4 +519,3 @@ class BoundField(StrAndUnicode):
         elif auto_id:
             return self.html_name
         return ''
-    auto_id = property(_auto_id)
