@@ -42,10 +42,17 @@ class Serializer(base.Serializer):
             raise base.SerializationError("Non-model object (%s) encountered during serialization" % type(obj))
 
         self.indent(1)
-        self.xml.startElement("object", {
-            "pk"    : smart_unicode(obj._get_pk_val()),
-            "model" : smart_unicode(obj._meta),
-        })
+        natural_key = self.use_natural_keys and hasattr(obj, 'natural_key')
+        object_data = {"model": smart_unicode(obj._meta)}
+        if not natural_key:
+            object_data['pk'] = smart_unicode(obj._get_pk_val())
+        self.xml.startElement("object", object_data)
+        if natural_key:
+            for value in obj.natural_key():
+                self.indent(2)
+                self.xml.startElement("natural", {})
+                self.xml.characters(smart_unicode(value))
+                self.xml.endElement("natural")
 
     def end_object(self, obj):
         """
@@ -167,12 +174,22 @@ class Deserializer(base.Deserializer):
         Model = self._get_model_from_node(node, "model")
 
         # Start building a data dictionary from the object.  If the node is
-        # missing the pk attribute, bail.
-        pk = node.getAttribute("pk")
+        # missing the pk attribute (and isn't a natural key), bail.
+        pk = None
+        if hasattr(Model._default_manager, 'get_by_natural_key'):
+            keys = [n for n in node.childNodes if n.tagName == 'natural']
+            if keys:
+                field_value = [getInnerText(k).strip() for k in keys]
+                pk = Model._default_manager.db_manager(self.db).get_by_natural_key(*field_value).pk
         if not pk:
-            raise base.DeserializationError("<object> node is missing the 'pk' attribute")
+            pk = Model._meta.pk.to_python(node.getAttribute("pk"))
+        if not pk:
+            msg = "<object> node is missing the 'pk' attribute"
+            if hasattr(Model._default_manager, 'get_by_natural_key'):
+                msg = "%s or some <natural> nodes" % msg
+            raise base.DeserializationError(msg)
 
-        data = {Model._meta.pk.attname : Model._meta.pk.to_python(pk)}
+        data = {Model._meta.pk.attname: pk}
 
         # Also start building a dict of m2m data (this is saved as
         # {m2m_accessor_attribute : [list_of_related_objects]})
