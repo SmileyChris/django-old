@@ -89,7 +89,10 @@ def Deserializer(object_list, **options):
         pk = d["pk"]
         if hasattr(Model._default_manager, 'get_by_natural_key') and\
                                                 hasattr(pk, '__iter__'):
-            pk = Model._default_manager.get_by_natural_key(*pk).pk
+            try:
+                pk = Model._default_manager.db_manager(db).get_by_natural_key(*pk).pk
+            except Model.DoesNotExist:
+                pk = None
         else:
             pk = Model._meta.pk.to_python(pk)
         data = {Model._meta.pk.attname: pk}

@@ -173,21 +173,19 @@ class Deserializer(base.Deserializer):
         # bail.
         Model = self._get_model_from_node(node, "model")
 
-        # Start building a data dictionary from the object.  If the node is
-        # missing the pk attribute (and isn't a natural key), bail.
-        pk = None
+        # Start building a data dictionary from the object.
+        natural_key = False
         if hasattr(Model._default_manager, 'get_by_natural_key'):
             keys = [n for n in node.childNodes if n.tagName == 'natural']
             if keys:
                 field_value = [getInnerText(k).strip() for k in keys]
-                pk = Model._default_manager.db_manager(self.db).get_by_natural_key(*field_value).pk
-        if not pk:
+                try:
+                    pk = Model._default_manager.db_manager(self.db).get_by_natural_key(*field_value).pk
+                except Model.DoesNotExist:
+                    pk = None
+                natural_key = True
+        if not natural_key:
             pk = Model._meta.pk.to_python(node.getAttribute("pk"))
-        if not pk:
-            msg = "<object> node is missing the 'pk' attribute"
-            if hasattr(Model._default_manager, 'get_by_natural_key'):
-                msg = "%s or some <natural> nodes" % msg
-            raise base.DeserializationError(msg)
 
         data = {Model._meta.pk.attname: pk}
 
