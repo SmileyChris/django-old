@@ -42,17 +42,10 @@ class Serializer(base.Serializer):
             raise base.SerializationError("Non-model object (%s) encountered during serialization" % type(obj))
 
         self.indent(1)
-        natural_key = self.use_natural_keys and hasattr(obj, 'natural_key')
         object_data = {"model": smart_unicode(obj._meta)}
-        if not natural_key:
+        if not self.use_natural_keys or not hasattr(obj, 'natural_key'):
             object_data['pk'] = smart_unicode(obj._get_pk_val())
         self.xml.startElement("object", object_data)
-        if natural_key:
-            for value in obj.natural_key():
-                self.indent(2)
-                self.xml.startElement("natural", {})
-                self.xml.characters(smart_unicode(value))
-                self.xml.endElement("natural")
 
     def end_object(self, obj):
         """
@@ -174,20 +167,10 @@ class Deserializer(base.Deserializer):
         Model = self._get_model_from_node(node, "model")
 
         # Start building a data dictionary from the object.
-        natural_key = False
-        if hasattr(Model._default_manager, 'get_by_natural_key'):
-            keys = [n for n in node.childNodes if n.tagName == 'natural']
-            if keys:
-                field_value = [getInnerText(k).strip() for k in keys]
-                try:
-                    pk = Model._default_manager.db_manager(self.db).get_by_natural_key(*field_value).pk
-                except Model.DoesNotExist:
-                    pk = None
-                natural_key = True
-        if not natural_key:
-            pk = Model._meta.pk.to_python(node.getAttribute("pk"))
-
-        data = {Model._meta.pk.attname: pk}
+        data = {}
+        if node.hasAttribute('pk'):
+            data[Model._meta.pk.attname] = Model._meta.pk.to_python(
+                                                    node.getAttribute('pk'))
 
         # Also start building a dict of m2m data (this is saved as
         # {m2m_accessor_attribute : [list_of_related_objects]})
@@ -218,8 +201,10 @@ class Deserializer(base.Deserializer):
                     value = field.to_python(getInnerText(field_node).strip())
                 data[field.name] = value
 
+        obj = base.build_instance(Model, data, self.db)
+
         # Return a DeserializedObject so that the m2m data has a place to live.
-        return base.DeserializedObject(Model(**data), m2m_data)
+        return base.DeserializedObject(obj, m2m_data)
 
     def _handle_fk_field_node(self, node, field):
         """
