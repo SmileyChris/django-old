@@ -81,7 +81,7 @@ def save_instance(form, instance, fields=None, fail_message='saved',
     # Wrap up the saving of m2m data as a function.
     def save_m2m():
         cleaned_data = form.cleaned_data
-        for f in opts.many_to_many:
+        for f in opts.many_to_many + reverse_m2ms(instance, fields):
             if fields and f.name not in fields:
                 continue
             if f.name in cleaned_data:
@@ -116,6 +116,25 @@ def form_for_fields(field_list):
                          for f in field_list if f.editable])
     return type('FormForFields', (BaseForm,), {'base_fields': fields})
 
+def reverse_m2ms(instance, fields):
+    """
+    Returns a list of placeholder ManyToManyFields for matching (i.e. reverse
+    relationships explicitly specified in fields) reverse many to many
+    relationships.
+    """
+    if not fields:
+        return []
+    from django.db.models.fields.related import ManyToManyField
+    reverse_m2m = []
+    for obj in instance._meta.get_all_related_many_to_many_objects():
+        name = obj.get_accessor_name()
+        # Reverse relationships must be explicitly provided (and provide an
+        # accessor name, which asymmetric relationships don't do).
+        if name and name not in fields:
+            continue
+        field = ManyToManyField(name=name, to=obj.model)
+        reverse_m2m.append(field)
+    return reverse_m2m
 
 # ModelForms #################################################################
 
@@ -135,7 +154,7 @@ def model_to_dict(instance, fields=None, exclude=None):
     from django.db.models.fields.related import ManyToManyField
     opts = instance._meta
     data = {}
-    for f in opts.fields + opts.many_to_many:
+    for f in opts.fields + opts.many_to_many + reverse_m2ms(instance, fields):
         if not f.editable:
             continue
         if fields and not f.name in fields:
@@ -169,7 +188,7 @@ def fields_for_model(model, fields=None, exclude=None, widgets=None, formfield_c
     field_list = []
     ignored = []
     opts = model._meta
-    for f in opts.fields + opts.many_to_many:
+    for f in opts.fields + opts.many_to_many + reverse_m2ms(model, fields):
         if not f.editable:
             continue
         if fields and not f.name in fields:
