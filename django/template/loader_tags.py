@@ -1,4 +1,4 @@
-from django.template import TemplateSyntaxError, TemplateDoesNotExist, Variable
+from django.template import TemplateSyntaxError, Variable
 from django.template import Library, Node, TextNode
 from django.template.loader import get_template
 from django.conf import settings
@@ -7,8 +7,12 @@ from django.utils.safestring import mark_safe
 register = Library()
 
 BLOCK_CONTEXT_KEY = 'block_context'
+EXTENDS_SEEN_KEY = 'extends_seen_parents'
 
-class ExtendsError(Exception):
+class ExtendsError(TemplateSyntaxError):
+    pass
+
+class ExtendsRecursionError(ExtendsError):
     pass
 
 class BlockContext(object):
@@ -94,9 +98,18 @@ class ExtendsNode(Node):
             error_msg = "Invalid template name in 'extends' tag: %r." % parent
             if self.parent_name_expr:
                 error_msg += " Got this from the '%s' variable." % self.parent_name_expr.token
-            raise TemplateSyntaxError(error_msg)
+            raise ExtendsError(error_msg)
         if hasattr(parent, 'render'):
             return parent # parent is a Template object
+        if EXTENDS_SEEN_KEY not in context.render_context:
+            seen_parents = set()
+            context.render_context[EXTENDS_SEEN_KEY] = seen_parents 
+        else:
+            seen_parents = context.render_context[EXTENDS_SEEN_KEY]
+            if parent in seen_parents:
+                raise ExtendsRecursionError('Template %r cannot be extended '
+                        'because it would cause a circular recursion' % parent)
+        seen_parents.add(parent)
         return get_template(parent)
 
     def render(self, context):
@@ -109,8 +122,9 @@ class ExtendsNode(Node):
         # Add the block nodes from this node to the block context
         block_context.add_blocks(self.blocks)
 
-        # If this block's parent doesn't have an extends node it is the root,
-        # and its block nodes also need to be added to the block context.
+        # If this template's parent doesn't have an extends node it is the root
+        # then the parent's block nodes also need to be added to the block
+        # context.
         for node in compiled_parent.nodelist:
             # The ExtendsNode has to be the first non-text node.
             if not isinstance(node, TextNode):

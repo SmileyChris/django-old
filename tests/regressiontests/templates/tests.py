@@ -15,7 +15,7 @@ import unittest
 
 from django import template
 from django.core import urlresolvers
-from django.template import loader
+from django.template import loader, loader_tags
 from django.template.loaders import app_directories, filesystem, cached
 from django.utils.translation import activate, deactivate, ugettext as _
 from django.utils.safestring import mark_safe
@@ -642,7 +642,7 @@ class Templates(unittest.TestCase):
             'exception01': ("{% extends 'nonexistent' %}", {}, template.TemplateDoesNotExist),
 
             # Raise exception for invalid template name (in variable)
-            'exception02': ("{% extends nonexistent %}", {}, (template.TemplateSyntaxError, template.TemplateDoesNotExist)),
+            'exception02': ("{% extends nonexistent %}", {}, (loader_tags.ExtendsError, template.TemplateDoesNotExist)),
 
             # Raise exception for extra {% extends %} tags
             'exception03': ("{% extends 'inheritance01' %}{% block first %}2{% endblock %}{% extends 'inheritance16' %}", {}, template.TemplateSyntaxError),
@@ -1040,6 +1040,24 @@ class Templates(unittest.TestCase):
             'inheritance39': ("{% extends 'inheritance30' %}{% block opt %}new{{ block.super }}{% endblock %}", {'optional': True}, '1new23'),
             'inheritance40': ("{% extends 'inheritance33' %}{% block opt %}new{{ block.super }}{% endblock %}", {'optional': 1}, '1new23'),
             'inheritance41': ("{% extends 'inheritance36' %}{% block opt %}new{{ block.super }}{% endblock %}", {'numbers': '123'}, '_new1_new2_new3_'),
+
+            ### CIRCULAR INHERITANCE EXCEPTIONS #######################################
+
+            # Self-extending template
+            'circularinheritance01': ("{% extends 'circularinheritance01' %}", {}, loader_tags.ExtendsRecursionError),
+
+            # Circular extending template
+            'circularinheritance02': ("{% extends 'circularinheritance04' %}", {}, loader_tags.ExtendsRecursionError),
+            'circularinheritance03': ("{% extends 'circularinheritance02' %}", {}, loader_tags.ExtendsRecursionError),
+            'circularinheritance04': ("{% extends 'circularinheritance03' %}", {}, loader_tags.ExtendsRecursionError),
+
+            # Self-extending template (by variable)
+            'circularinheritance05': ("{% extends var %}", {'var': 'circularinheritance05'}, loader_tags.ExtendsRecursionError),
+
+            # Circular template (by variable)
+            'circularinheritance06': ("{% extends var %}", {'var': 'circularinheritance08'}, loader_tags.ExtendsRecursionError),
+            'circularinheritance07': ("{% extends var %}", {'var': 'circularinheritance06'}, loader_tags.ExtendsRecursionError),
+            'circularinheritance08': ("{% extends var %}", {'var': 'circularinheritance07'}, loader_tags.ExtendsRecursionError),
 
             ### I18N ##################################################################
 
