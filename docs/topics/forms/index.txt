@@ -307,6 +307,17 @@ templates:
                {# Do something special #}
             {% endif %}
 
+    ``{{ field.css_classes }}``
+        .. versionadded:: 1.2
+        
+        A space separated list of css classes applicable to this field, useful
+        for styling a row for a
+        
+        For this to be useful, you must set the `Form's attributes for required
+        / erroneous fields`__.
+
+.. __: ref-forms-api-default-css-classes 
+
 Looping over hidden and visible fields
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

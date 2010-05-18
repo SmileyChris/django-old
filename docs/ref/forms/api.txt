@@ -379,6 +379,8 @@ a form object, and each rendering method returns a Unicode object.
         <tr><th><label for="id_sender">Sender:</label></th><td><input type="text" name="sender" id="id_sender" /></td></tr>
         <tr><th><label for="id_cc_myself">Cc myself:</label></th><td><input type="checkbox" name="cc_myself" id="id_cc_myself" /></td></tr>
 
+.. _ref-forms-api-default-css-classes:
+
 Styling required or erroneous form rows
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -389,7 +391,7 @@ errors. For example, you might want to present required form rows in bold and
 highlight errors in red.
 
 The :class:`Form` class has a couple of hooks you can use to add ``class``
-attributes to required rows or to rows with errors: simple set the
+attributes to required rows or to rows with errors: simply set the
 :attr:`Form.error_css_class` and/or :attr:`Form.required_css_class`
 attributes::
 
@@ -408,6 +410,8 @@ classes, as needed. The HTML will look something like::
     <tr class="required"><th><label for="id_message">Message:</label>    ...
     <tr class="required error"><th><label for="id_sender">Sender:</label>      ...
     <tr><th><label for="id_cc_myself">Cc myself:<label> ...
+
+See also the section on `using these css classes at a more granular level`_.
 
 .. _ref-forms-api-configuring-label:
 
@@ -644,6 +648,8 @@ when printed::
 
     >>> str(f['subject'].errors)
     ''
+
+.. _ref-forms-api-css-classes:
 
 .. versionadded:: 1.2
 
