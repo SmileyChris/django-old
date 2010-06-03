@@ -56,7 +56,11 @@ class Command(BaseCommand):
             translation.activate(settings.LANGUAGE_CODE)
 
             try:
-                handler = AdminMediaHandler(WSGIHandler(), admin_media_path)
+                handler = WSGIHandler()
+                if admin_media_path:
+                    # only serve admin media if explicitely
+                    # requested via the --adminmedia option
+                    handler = AdminMediaHandler(handler, admin_media_path)
                 run(addr, int(port), handler)
             except WSGIServerException, e:
                 # Use helpful error messages instead of ugly tracebacks.

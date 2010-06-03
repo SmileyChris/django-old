@@ -201,11 +201,6 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 # Output to use in template system for invalid (e.g. misspelled) variables.
 TEMPLATE_STRING_IF_INVALID = ''
 
-# URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
-# trailing slash.
-# Examples: "http://foo.com/media/", "/media/".
-ADMIN_MEDIA_PREFIX = '/media/'
-
 # Default e-mail address to use for various automated correspondence from
 # the site managers.
 DEFAULT_FROM_EMAIL = 'webmaster@localhost'
@@ -550,3 +545,41 @@ TEST_DATABASE_COLLATION = None
 
 # The list of directories to search for fixtures
 FIXTURE_DIRS = ()
+
+###############
+# STATICFILES #
+###############
+
+# The directory in which the static files are collected in
+STATICFILES_ROOT = None
+
+# The URL path to STATICFILES_ROOT
+STATICFILES_URL = '/static/'
+
+# A tuple of two-tuples with a name and the path of additional directories
+# which hold static files and should be taken into account during resolving
+STATICFILES_DIRS = ()
+
+# Names of app sub directories that should be automatically scanned
+STATICFILES_DIRNAMES = [
+    'media',
+    'static',
+]
+
+# Apps that have media in <app>/media, not in <app>/media/<app>,
+# e.g. django.contrib.admin
+STATICFILES_PREPEND_LABEL_APPS = (
+    'django.contrib.admin',
+)
+
+# Apps that shouldn't be taken into account when collecting app media
+STATICFILES_EXCLUDED_APPS = ()
+
+# The default file storage backend used during the build process
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
+
+# URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
+# trailing slash.
+# Examples: "http://foo.com/media/admin/", "/media/admin/".
+ADMIN_MEDIA_PREFIX = '/static/admin/'
+
