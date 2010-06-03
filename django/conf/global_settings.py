@@ -583,3 +583,10 @@ STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 # Examples: "http://foo.com/media/admin/", "/media/admin/".
 ADMIN_MEDIA_PREFIX = '/static/admin/'
 
+# List of resolver classes that know how to find static files in
+# various locations.
+STATICFILES_RESOLVERS = (
+    'django.contrib.staticfiles.resolvers.FileSystemFileResolver',
+    'django.contrib.staticfiles.resolvers.AppDirectoriesFileResolver',
+    'django.contrib.staticfiles.resolvers.LocalStorageFileResolver',
+)
