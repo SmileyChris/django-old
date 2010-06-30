@@ -7,10 +7,7 @@ tests = r"""
 >>> import datetime
 >>> import time
 >>> import re
->>> try:
-...     from decimal import Decimal
-... except ImportError:
-...     from django.utils._decimal import Decimal
+>>> from decimal import Decimal
 >>> from django.utils.translation import activate, deactivate
 >>> from django.conf import settings
 
@@ -1138,6 +1135,7 @@ u'<input type="text" name="date" value="2007-09-17 12:51:34" />'
 u'<input type="text" name="date" value="2007-09-17 12:51:00" />'
 >>> activate('de-at')
 >>> settings.USE_L10N = True
+>>> w.is_localized = True
 >>> w.render('date', d)
 u'<input type="text" name="date" value="17.09.2007 12:51:34" />'
 >>> deactivate()
@@ -1179,6 +1177,7 @@ u'<input type="text" name="date" value="2007-09-17" />'
 
 >>> activate('de-at')
 >>> settings.USE_L10N = True
+>>> w.is_localized = True
 >>> w.render('date', d)
 u'<input type="text" name="date" value="17.09.2007" />'
 >>> deactivate()
@@ -1223,6 +1222,7 @@ u'<input type="text" name="time" value="13:12:11" />'
 
 >>> activate('de-at')
 >>> settings.USE_L10N = True
+>>> w.is_localized = True
 >>> w.render('date', d)
 u'<input type="text" name="date" value="17.09.2007" />'
 >>> deactivate()
@@ -1262,6 +1262,7 @@ u'<input type="hidden" name="date_0" value="2007-09-17" /><input type="hidden" n
 u'<input type="hidden" name="date_0" value="2007-09-17" /><input type="hidden" name="date_1" value="12:51:00" />'
 >>> activate('de-at')
 >>> settings.USE_L10N = True
+>>> w.is_localized = True
 >>> w.render('date', datetime.datetime(2007, 9, 17, 12, 51))
 u'<input type="hidden" name="date_0" value="17.09.2007" /><input type="hidden" name="date_1" value="12:51:00" />'
 >>> deactivate()

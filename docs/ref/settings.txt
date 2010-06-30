@@ -411,7 +411,7 @@ DATE_FORMAT
 Default: ``'N j, Y'`` (e.g. ``Feb. 4, 2003``)
 
 The default formatting to use for displaying date fields in any part of the
-system. Note that if setting:`USE_L10N` is set to ``True``, then the
+system. Note that if :setting:`USE_L10N` is set to ``True``, then the
 locale-dictated format has higher precedence and will be applied instead. See
 :ttag:`allowed date format strings <now>`.
 
@@ -441,7 +441,7 @@ to be displayed.
 
 See also ``DATETIME_INPUT_FORMATS`` and ``TIME_INPUT_FORMATS``.
 
-.. _datetime: http://docs.python.org/library/datetime.html#strftime-behavior
+.. _datetime: http://docs.python.org/library/datetime.html#strftime-strptime-behavior
 
 .. setting:: DATETIME_FORMAT
 
@@ -451,7 +451,7 @@ DATETIME_FORMAT
 Default: ``'N j, Y, P'`` (e.g. ``Feb. 4, 2003, 4 p.m.``)
 
 The default formatting to use for displaying datetime fields in any part of the
-system. Note that if setting:`USE_L10N` is set to ``True``, then the
+system. Note that if :setting:`USE_L10N` is set to ``True``, then the
 locale-dictated format has higher precedence and will be applied instead. See
 :ttag:`allowed date format strings <now>`.
 
@@ -481,7 +481,7 @@ to be displayed.
 
 See also ``DATE_INPUT_FORMATS`` and ``TIME_INPUT_FORMATS``.
 
-.. _datetime: http://docs.python.org/library/datetime.html#strftime-behavior
+.. _datetime: http://docs.python.org/library/datetime.html#strftime-strptime-behavior
 
 .. setting:: DEBUG
 
@@ -494,8 +494,9 @@ A boolean that turns on/off debug mode.
 
 If you define custom settings, `django/views/debug.py`_ has a ``HIDDEN_SETTINGS``
 regular expression which will hide from the DEBUG view anything that contains
-``'SECRET'``, ``'PASSWORD'``, or ``'PROFANITIES'``. This allows untrusted users to
-be able to give backtraces without seeing sensitive (or offensive) settings.
+``'SECRET'``, ``'PASSWORD'``, ``'PROFANITIES'``, or ``'SIGNATURE'``. This allows
+untrusted users to be able to give backtraces without seeing sensitive (or
+offensive) settings.
 
 Still, note that there are always going to be sections of your debug output that
 are inappropriate for public consumption. File paths, configuration options, and
@@ -615,7 +616,7 @@ EMAIL_BACKEND
 
 .. versionadded:: 1.2
 
-Default: ``'django.core.mail.backends.smtp'``
+Default: ``'django.core.mail.backends.smtp.EmailBackend'``
 
 The backend to use for sending emails. For the list of available backends see
 :ref:`topics-email`.
@@ -879,6 +880,14 @@ A tuple of strings designating all applications that are enabled in this Django
 installation. Each string should be a full Python path to a Python package that
 contains a Django application, as created by :djadmin:`django-admin.py startapp
 <startapp>`.
+
+.. admonition:: App names must be unique
+
+    The application names (that is, the final dotted part of the
+    path to the module containing ``models.py``) defined in
+    :setting:`INSTALLED_APPS` *must* be unique. For example, you can't
+    include both ``django.contrib.auth`` and ``myproject.auth`` in
+    INSTALLED_APPS.
 
 .. setting:: INTERNAL_IPS
 
@@ -1226,7 +1235,7 @@ SESSION_ENGINE
 .. versionadded:: 1.0
 
 .. versionchanged:: 1.1
-   The ``cache_db`` backend was added
+   The ``cached_db`` backend was added
 
 Default: ``django.contrib.sessions.backends.db``
 
@@ -1235,7 +1244,7 @@ Controls where Django stores session data. Valid values are:
     * ``'django.contrib.sessions.backends.db'``
     * ``'django.contrib.sessions.backends.file'``
     * ``'django.contrib.sessions.backends.cache'``
-    * ``'django.contrib.sessions.backends.cache_db'``
+    * ``'django.contrib.sessions.backends.cached_db'``
 
 See :ref:`topics-http-sessions`.
 
@@ -1341,9 +1350,9 @@ SHORT_DATE_FORMAT
 Default: ``m/d/Y`` (e.g. ``12/31/2003``)
 
 An available formatting that can be used for displaying date fields on
-templates. Note that if ``USE_L10N`` is set to ``True``, then the corresponding
-locale-dictated format has higher precedence and will be applied. See
-:ttag:`allowed date format strings <now>`.
+templates. Note that if :setting:`USE_L10N` is set to ``True``, then the
+corresponding locale-dictated format has higher precedence and will be applied.
+See :ttag:`allowed date format strings <now>`.
 
 See also ``DATE_FORMAT`` and ``SHORT_DATETIME_FORMAT``.
 
@@ -1357,9 +1366,9 @@ SHORT_DATETIME_FORMAT
 Default: ``m/d/Y P`` (e.g. ``12/31/2003 4 p.m.``)
 
 An available formatting that can be used for displaying datetime fields on
-templates. Note that if ``USE_L10N`` is set to ``True``, then the corresponding
-locale-dictated format has higher precedence and will be applied. See
-:ttag:`allowed date format strings <now>`.
+templates. Note that if :setting:`USE_L10N` is set to ``True``, then the
+corresponding locale-dictated format has higher precedence and will be applied.
+See :ttag:`allowed date format strings <now>`.
 
 See also ``DATE_FORMAT`` and ``SHORT_DATETIME_FORMAT``.
 
@@ -1497,7 +1506,7 @@ TIME_FORMAT
 Default: ``'P'`` (e.g. ``4 p.m.``)
 
 The default formatting to use for displaying time fields in any part of the
-system. Note that if setting:`USE_L10N` is set to ``True``, then the
+system. Note that if :setting:`USE_L10N` is set to ``True``, then the
 locale-dictated format has higher precedence and will be applied instead. See
 :ttag:`allowed date format strings <now>`.
 
@@ -1523,7 +1532,7 @@ to be displayed.
 
 See also ``DATE_INPUT_FORMATS`` and ``DATETIME_INPUT_FORMATS``.
 
-.. _datetime: http://docs.python.org/library/datetime.html#strftime-behavior
+.. _datetime: http://docs.python.org/library/datetime.html#strftime-strptime-behavior
 
 .. setting:: TIME_ZONE
 

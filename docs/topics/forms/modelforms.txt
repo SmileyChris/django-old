@@ -366,6 +366,9 @@ Since the Author model has only 3 fields, 'name', 'title', and
 Overriding the default field types or widgets
 ---------------------------------------------
 
+.. versionadded:: 1.2
+ 	The ``widgets`` attribute is new in Django 1.2.
+
 The default field types, as described in the `Field types`_ table above, are
 sensible defaults. If you have a ``DateField`` in your model, chances are you'd
 want that to be represented as a ``DateField`` in your form. But
@@ -376,9 +379,12 @@ To specify a custom widget for a field, use the ``widgets`` attribute of the
 inner ``Meta`` class. This should be a dictionary mapping field names to widget
 classes or instances.
 
-For example, if you want the a ``CharField`` to be represented by a
-``<textarea>`` instead of its default ``<input type="text">``, you can override
-the field's widget::
+For example, if you want the a ``CharField`` for the ``name``
+attribute of ``Author`` to be represented by a ``<textarea>`` instead
+of its default ``<input type="text">``, you can override the field's
+widget::
+
+    from django.forms import ModelForm, Textarea
 
     class AuthorForm(ModelForm):
         class Meta:
@@ -655,8 +661,8 @@ Limiting the number of editable objects
 
 .. versionchanged:: 1.2
 
-As with regular formsets, you can use the ``max_num`` parameter to
-``modelformset_factory`` to limit the number of extra forms displayed.
+As with regular formsets, you can use the ``max_num`` and ``extra`` parameters
+to ``modelformset_factory`` to limit the number of extra forms displayed.
 
 ``max_num`` does not prevent existing objects from being displayed::
 
@@ -668,7 +674,7 @@ As with regular formsets, you can use the ``max_num`` parameter to
     >>> [x.name for x in formset.get_queryset()]
     [u'Charles Baudelaire', u'Paul Verlaine', u'Walt Whitman']
 
-If the value of ``max_num`` is geater than the number of existing related
+If the value of ``max_num`` is greater than the number of existing related
 objects, up to ``extra`` additional blank forms will be added to the formset,
 so long as the total number of forms does not exceed ``max_num``::
 

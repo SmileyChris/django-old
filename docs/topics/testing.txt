@@ -668,8 +668,16 @@ arguments at time of construction:
         (The name ``attachment`` here is not relevant; use whatever name your
         file-processing code expects.)
 
-        Note that you should manually close the file after it has been provided
-        to ``post()``.
+        Note that if you wish to use the same file handle for multiple
+        ``post()`` calls then you will need to manually reset the file
+        pointer between posts. The easiest way to do this is to
+        manually close the file after it has been provided to
+        ``post()``, as demonstrated above.
+
+        You should also ensure that the file is opened in a way that
+        allows the data to be read. If your file contains binary data
+        such as an image, this means you will need to open the file in
+        ``rb`` (read binary) mode.
 
         The ``extra`` argument acts the same as for :meth:`Client.get`.
 
@@ -1136,7 +1144,7 @@ Multi-database support
 .. versionadded:: 1.2
 
 Django sets up a test database corresponding to every database that is
-defined in the :setting:``DATABASES`` definition in your settings
+defined in the :setting:`DATABASES` definition in your settings
 file. However, a big part of the time taken to run a Django TestCase
 is consumed by the call to ``flush`` that ensures that you have a
 clean database at the start of each test run. If you have multiple
@@ -1239,6 +1247,19 @@ cause of an failure in your test suite.
     If your request used the ``follow`` argument, the ``expected_url`` and
     ``target_status_code`` will be the url and status code for the final
     point of the redirect chain.
+
+.. method:: TestCase.assertQuerysetEqual(response, qs, values, transform=repr)
+
+    Asserts that a queryset ``qs`` returns a particular list of values ``values``.
+
+    The comparison of the contents of ``qs`` and ``values`` is performed using
+    the function ``transform``; by default, this means that the ``repr()`` of
+    each value is compared. Any other callable can be used if ``repr()`` doesn't
+    provide a unique or helpful comparison.
+
+    The comparison is also ordering dependent. If ``qs`` doesn't provide an
+    implicit ordering, you will need to apply a ``order_by()`` clause to your
+    queryset to ensure that the test will pass reliably.
 
 .. _topics-testing-email:
 

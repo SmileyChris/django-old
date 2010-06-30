@@ -8,7 +8,6 @@ class Bug8245Test(TestCase):
     Test for bug #8245 - don't raise an AlreadyRegistered exception when using
     autodiscover() and an admin.py module contains an error.
     """
-
     def test_bug_8245(self):
         # The first time autodiscover is called, we should get our real error.
         try:
@@ -26,5 +25,5 @@ class Bug8245Test(TestCase):
         except Exception, e:
             self.failUnlessEqual(str(e), "Bad admin module")
         else:
-            self.fail( 
+            self.fail(
                 'autodiscover should have raised a "Bad admin module" error.')
