@@ -93,7 +93,11 @@ class AppDirectoriesFileResolver(BaseFileResolver):
 
 
 class LocalStorageFileResolver(BaseFileResolver):
-    static_storage = get_storage_class(settings.STATICFILES_STORAGE)()
+    static_storage = None
+
+    def __init__(self, *args, **kwargs):
+        self.static_storage = get_storage_class(settings.STATICFILES_STORAGE)()
+        super(LocalStorageFileResolver, self).__init__(*args, **kwargs)
 
     def resolve(self, path, all=False):
         """
