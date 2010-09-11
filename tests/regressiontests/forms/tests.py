@@ -39,6 +39,9 @@ from media import media_tests
 
 from fields import FieldsTests
 from validators import TestFieldWithValidators
+from widgets import WidgetTests
+
+from input_formats import *
 
 __test__ = {
     'extra_tests': extra_tests,

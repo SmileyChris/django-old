@@ -37,11 +37,32 @@ class MergeDict(object):
                 return dict_.getlist(key)
         return []
 
-    def items(self):
-        item_list = []
+    def iteritems(self):
+        seen = set()
         for dict_ in self.dicts:
-            item_list.extend(dict_.items())
-        return item_list
+            for item in dict_.iteritems():
+                k, v = item
+                if k in seen:
+                    continue
+                seen.add(k)
+                yield item
+
+    def iterkeys(self):
+        for k, v in self.iteritems():
+            yield k
+
+    def itervalues(self):
+        for k, v in self.iteritems():
+            yield v
+
+    def items(self):
+        return list(self.iteritems())
+
+    def keys(self):
+        return list(self.iterkeys())
+
+    def values(self):
+        return list(self.itervalues())
 
     def has_key(self, key):
         for dict_ in self.dicts:
@@ -50,10 +71,32 @@ class MergeDict(object):
         return False
 
     __contains__ = has_key
+    __iter__ = iterkeys
 
     def copy(self):
         """Returns a copy of this object."""
         return self.__copy__()
+
+    def __str__(self):
+        '''
+        Returns something like
+
+            "{'key1': 'val1', 'key2': 'val2', 'key3': 'val3'}"
+
+        instead of the generic "<object meta-data>" inherited from object.
+        '''
+        return str(dict(self.items()))
+
+    def __repr__(self):
+        '''
+        Returns something like
+
+            MergeDict({'key1': 'val1', 'key2': 'val2'}, {'key3': 'val3'})
+
+        instead of generic "<object meta-data>" inherited from object.
+        '''
+        dictreprs = ', '.join(repr(d) for d in self.dicts)
+        return '%s(%s)' % (self.__class__.__name__, dictreprs)
 
 class SortedDict(dict):
     """

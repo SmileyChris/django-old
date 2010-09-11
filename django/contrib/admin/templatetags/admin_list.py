@@ -21,6 +21,9 @@ register = Library()
 DOT = '.'
 
 def paginator_number(cl,i):
+    """
+    Generates an individual page index link in a paginated list.
+    """
     if i == DOT:
         return u'... '
     elif i == cl.page_num:
@@ -30,6 +33,9 @@ def paginator_number(cl,i):
 paginator_number = register.simple_tag(paginator_number)
 
 def pagination(cl):
+    """
+    Generates the series of links to the pages in a paginated list.
+    """
     paginator, page_num = cl.paginator, cl.page_num
 
     pagination_required = (not cl.show_all or not cl.can_show_all) and cl.multi_page
@@ -73,6 +79,9 @@ def pagination(cl):
 pagination = register.inclusion_tag('admin/pagination.html')(pagination)
 
 def result_headers(cl):
+    """
+    Generates the list column headers.
+    """
     lookup_opts = cl.lookup_opts
 
     for i, field_name in enumerate(cl.list_display):
@@ -88,7 +97,6 @@ def result_headers(cl):
                     "class_attrib": mark_safe(' class="action-checkbox-column"')
                 }
                 continue
-            header = pretty_name(header)
 
             # It is a non-field, but perhaps one that is sortable
             admin_order_field = getattr(attr, "admin_order_field", None)
@@ -119,6 +127,9 @@ def _boolean_icon(field_val):
     return mark_safe(u'<img src="%simg/admin/icon-%s.gif" alt="%s" />' % (settings.ADMIN_MEDIA_PREFIX, BOOLEAN_MAPPING[field_val], field_val))
 
 def items_for_result(cl, result, form):
+    """
+    Generates the actual list of data.
+    """
     first = True
     pk = cl.lookup_opts.pk.attname
     for field_name in cl.list_display:
@@ -179,7 +190,7 @@ def items_for_result(cl, result, form):
                 result_repr = conditional_escape(result_repr)
             yield mark_safe(u'<td%s>%s</td>' % (row_class, result_repr))
     if form:
-        yield mark_safe(force_unicode(form[cl.model._meta.pk.name]))
+        yield mark_safe(u'<td>%s</td>' % force_unicode(form[cl.model._meta.pk.name]))
 
 def results(cl):
     if cl.formset:
@@ -190,12 +201,18 @@ def results(cl):
             yield list(items_for_result(cl, res, None))
 
 def result_list(cl):
+    """
+    Displays the headers and data list together
+    """
     return {'cl': cl,
             'result_headers': list(result_headers(cl)),
             'results': list(results(cl))}
 result_list = register.inclusion_tag("admin/change_list_results.html")(result_list)
 
 def date_hierarchy(cl):
+    """
+    Displays the date hierarchy for date drill-down functionality.
+    """
     if cl.date_hierarchy:
         field_name = cl.date_hierarchy
         year_field = '%s__year' % field_name
@@ -256,6 +273,9 @@ def date_hierarchy(cl):
 date_hierarchy = register.inclusion_tag('admin/date_hierarchy.html')(date_hierarchy)
 
 def search_form(cl):
+    """
+    Displays a search form for searching the list.
+    """
     return {
         'cl': cl,
         'show_result_count': cl.result_count != cl.full_result_count,

@@ -1,5 +1,3 @@
-.. _topics-i18n:
-
 =====================================
 Internationalization and localization
 =====================================
@@ -18,15 +16,15 @@ Essentially, Django does two things:
       to their language preferences.
 
 The complete process can be seen as divided in three stages. It is also possible
-to identify an identical number of roles with very well defined responsabilities
+to identify an identical number of roles with very well defined responsibilities
 associated with each of these tasks (although it's perfectly normal if you
 find yourself performing more than one of these roles):
 
-    * For applicacion authors wishing to make sure their Django apps can be
-      used in different locales: :ref:`topics-i18n-internationalization`.
-    * For translators wanting to translate Django apps: :ref:`topics-i18n-localization`.
+    * For application authors wishing to make sure their Django apps can be
+      used in different locales: :doc:`/topics/i18n/internationalization`.
+    * For translators wanting to translate Django apps: :doc:`/topics/i18n/localization`.
     * For system administrators/final users setting up internationalized apps or
-      developers integrating third party apps: :ref:`topics-i18n-deployment`.
+      developers integrating third party apps: :doc:`/topics/i18n/deployment`.
 
 .. toctree::
    :hidden:

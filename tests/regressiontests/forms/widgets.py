@@ -3,13 +3,11 @@ tests = r"""
 >>> from django.forms import *
 >>> from django.forms.widgets import RadioFieldRenderer
 >>> from django.utils.safestring import mark_safe
+>>> from django.utils import formats
 >>> import datetime
 >>> import time
 >>> import re
->>> try:
-...     from decimal import Decimal
-... except ImportError:
-...     from django.utils._decimal import Decimal
+>>> from decimal import Decimal
 >>> from django.utils.translation import activate, deactivate
 >>> from django.conf import settings
 
@@ -64,6 +62,17 @@ u'<input type="text" class="special" name="email" />'
 u'<input type="password" name="email" />'
 >>> w.render('email', None)
 u'<input type="password" name="email" />'
+>>> w.render('email', 'secret')
+u'<input type="password" name="email" />'
+
+The render_value argument lets you specify whether the widget should render
+its value. For security reasons, this is off by default.
+
+>>> w = PasswordInput(render_value=True)
+>>> w.render('email', '')
+u'<input type="password" name="email" />'
+>>> w.render('email', None)
+u'<input type="password" name="email" />'
 >>> w.render('email', 'test@example.com')
 u'<input type="password" name="email" value="test@example.com" />'
 >>> w.render('email', 'some "quoted" & ampersanded value')
@@ -72,35 +81,19 @@ u'<input type="password" name="email" value="some &quot;quoted&quot; &amp; amper
 u'<input type="password" name="email" value="test@example.com" class="fun" />'
 
 You can also pass 'attrs' to the constructor:
->>> w = PasswordInput(attrs={'class': 'fun'})
+>>> w = PasswordInput(attrs={'class': 'fun'}, render_value=True)
 >>> w.render('email', '')
 u'<input type="password" class="fun" name="email" />'
 >>> w.render('email', 'foo@example.com')
 u'<input type="password" class="fun" value="foo@example.com" name="email" />'
 
 'attrs' passed to render() get precedence over those passed to the constructor:
->>> w = PasswordInput(attrs={'class': 'pretty'})
+>>> w = PasswordInput(attrs={'class': 'pretty'}, render_value=True)
 >>> w.render('email', '', attrs={'class': 'special'})
 u'<input type="password" class="special" name="email" />'
 
 >>> w.render('email', 'ŠĐĆŽćžšđ', attrs={'class': 'fun'})
 u'<input type="password" class="fun" value="\u0160\u0110\u0106\u017d\u0107\u017e\u0161\u0111" name="email" />'
-
-The render_value argument lets you specify whether the widget should render
-its value. You may want to do this for security reasons.
->>> w = PasswordInput(render_value=True)
->>> w.render('email', 'secret')
-u'<input type="password" name="email" value="secret" />'
->>> w = PasswordInput(render_value=False)
->>> w.render('email', '')
-u'<input type="password" name="email" />'
->>> w.render('email', None)
-u'<input type="password" name="email" />'
->>> w.render('email', 'secret')
-u'<input type="password" name="email" />'
->>> w = PasswordInput(attrs={'class': 'fun'}, render_value=False)
->>> w.render('email', 'secret')
-u'<input type="password" class="fun" name="email" />'
 
 # HiddenInput Widget ############################################################
 
@@ -532,6 +525,20 @@ Choices can be nested one level in order to create HTML optgroups:
 <option value="2">Yes</option>
 <option value="3" selected="selected">No</option>
 </select>
+>>> w._has_changed(False, None)
+True
+>>> w._has_changed(None, False)
+True
+>>> w._has_changed(None, None)
+False
+>>> w._has_changed(False, False)
+False
+>>> w._has_changed(True, False)
+True
+>>> w._has_changed(True, None)
+True
+>>> w._has_changed(True, True)
+False
 
 """ + \
 r""" # [This concatenation is to keep the string below the jython's 32K limit].
@@ -1123,6 +1130,7 @@ u'<input type="text" name="date" value="2007-09-17 12:51:34" />'
 u'<input type="text" name="date" value="2007-09-17 12:51:00" />'
 >>> activate('de-at')
 >>> settings.USE_L10N = True
+>>> w.is_localized = True
 >>> w.render('date', d)
 u'<input type="text" name="date" value="17.09.2007 12:51:34" />'
 >>> deactivate()
@@ -1133,6 +1141,14 @@ Use 'format' to change the way a value is displayed.
 >>> w.render('date', d)
 u'<input type="text" name="date" value="17/09/2007 12:51" />'
 >>> w._has_changed(d, '17/09/2007 12:51')
+False
+
+Make sure a custom format works with _has_changed. The hidden input will use
+format.localize_input to display the initial value.
+>>> data = datetime.datetime(2010, 3, 6, 12, 0, 0)
+>>> custom_format = '%d.%m.%Y %H:%M'
+>>> w = DateTimeInput(format=custom_format)
+>>> w._has_changed(formats.localize_input(data), data.strftime(custom_format))
 False
 
 
@@ -1156,6 +1172,7 @@ u'<input type="text" name="date" value="2007-09-17" />'
 
 >>> activate('de-at')
 >>> settings.USE_L10N = True
+>>> w.is_localized = True
 >>> w.render('date', d)
 u'<input type="text" name="date" value="17.09.2007" />'
 >>> deactivate()
@@ -1167,6 +1184,15 @@ Use 'format' to change the way a value is displayed.
 u'<input type="text" name="date" value="17/09/2007" />'
 >>> w._has_changed(d, '17/09/2007')
 False
+
+Make sure a custom format works with _has_changed. The hidden input will use
+format.localize_input to display the initial value.
+>>> data = datetime.date(2010, 3, 6)
+>>> custom_format = '%d.%m.%Y'
+>>> w = DateInput(format=custom_format)
+>>> w._has_changed(formats.localize_input(data), data.strftime(custom_format))
+False
+
 
 # TimeInput ###################################################################
 
@@ -1191,6 +1217,7 @@ u'<input type="text" name="time" value="13:12:11" />'
 
 >>> activate('de-at')
 >>> settings.USE_L10N = True
+>>> w.is_localized = True
 >>> w.render('date', d)
 u'<input type="text" name="date" value="17.09.2007" />'
 >>> deactivate()
@@ -1202,6 +1229,15 @@ Use 'format' to change the way a value is displayed.
 u'<input type="text" name="time" value="12:51" />'
 >>> w._has_changed(t, '12:51')
 False
+
+Make sure a custom format works with _has_changed. The hidden input will use
+format.localize_input to display the initial value.
+>>> data = datetime.time(13, 0)
+>>> custom_format = '%I:%M %p'
+>>> w = TimeInput(format=custom_format)
+>>> w._has_changed(formats.localize_input(data), data.strftime(custom_format))
+False
+
 
 # SplitHiddenDateTimeWidget ###################################################
 
@@ -1221,6 +1257,7 @@ u'<input type="hidden" name="date_0" value="2007-09-17" /><input type="hidden" n
 u'<input type="hidden" name="date_0" value="2007-09-17" /><input type="hidden" name="date_1" value="12:51:00" />'
 >>> activate('de-at')
 >>> settings.USE_L10N = True
+>>> w.is_localized = True
 >>> w.render('date', datetime.datetime(2007, 9, 17, 12, 51))
 u'<input type="hidden" name="date_0" value="17.09.2007" /><input type="hidden" name="date_1" value="12:51:00" />'
 >>> deactivate()
@@ -1228,3 +1265,43 @@ u'<input type="hidden" name="date_0" value="17.09.2007" /><input type="hidden" n
 
 """
 
+
+from django.utils import copycompat as copy
+from unittest import TestCase
+from django import forms
+
+
+class SelectAndTextWidget(forms.MultiWidget):
+    """
+    MultiWidget subclass
+    """
+    def __init__(self, choices=[]):
+        widgets = [
+            forms.RadioSelect(choices=choices),
+            forms.TextInput
+        ]
+        super(SelectAndTextWidget, self).__init__(widgets)
+
+    def _set_choices(self, choices):
+        """
+        When choices are set for this widget, we want to pass those along to the Select widget
+        """
+        self.widgets[0].choices = choices
+    def _get_choices(self):
+        """
+        The choices for this widget are the Select widget's choices
+        """
+        return self.widgets[0].choices
+    choices = property(_get_choices, _set_choices)
+
+
+class WidgetTests(TestCase):
+
+    def test_12048(self):
+        # See ticket #12048.
+        w1 = SelectAndTextWidget(choices=[1,2,3])
+        w2 = copy.deepcopy(w1)
+        w2.choices = [4,5,6]
+        # w2 ought to be independent of w1, since MultiWidget ought
+        # to make a copy of its sub-widgets when it is copied.
+        self.assertEqual(w1.choices, [1,2,3])

@@ -17,9 +17,9 @@ except ImportError:
 from django.core.exceptions import ValidationError
 from django.core import validators
 import django.utils.copycompat as copy
+from django.utils import formats
 from django.utils.translation import ugettext_lazy as _
 from django.utils.encoding import smart_unicode, smart_str
-from django.utils.formats import get_format
 from django.utils.functional import lazy
 
 # Provide this import for backwards compatibility.
@@ -71,7 +71,7 @@ class Field(object):
 
     def __init__(self, required=True, widget=None, label=None, initial=None,
                  help_text=None, error_messages=None, show_hidden_initial=False,
-                 validators=[]):
+                 validators=[], localize=False):
         # required -- Boolean that specifies whether the field is required.
         #             True by default.
         # widget -- A Widget class, or instance of a Widget class, that should
@@ -85,9 +85,12 @@ class Field(object):
         # initial -- A value to use in this Field's initial display. This value
         #            is *not* used as a fallback if data isn't given.
         # help_text -- An optional string to use as "help text" for this Field.
+        # error_messages -- An optional dictionary to override the default
+        #                   messages that the field will raise.
         # show_hidden_initial -- Boolean that specifies if it is needed to render a
         #                        hidden widget with initial value after widget.
         # validators -- List of addtional validators to use
+        # localize -- Boolean that specifies if the field should be localized.
         if label is not None:
             label = smart_unicode(label)
         self.required, self.label, self.initial = required, label, initial
@@ -99,6 +102,11 @@ class Field(object):
         widget = widget or self.widget
         if isinstance(widget, type):
             widget = widget()
+
+        # Trigger the localization machinery if needed.
+        self.localize = localize
+        if self.localize:
+            widget.is_localized = True
 
         # Hook into self.widget_attrs() for any Field-specific HTML attributes.
         extra_attrs = self.widget_attrs(widget)
@@ -118,6 +126,9 @@ class Field(object):
         self.error_messages = messages
 
         self.validators = self.default_validators + validators
+
+    def prepare_value(self, value):
+        return value
 
     def to_python(self, value):
         return value
@@ -213,7 +224,8 @@ class IntegerField(Field):
         value = super(IntegerField, self).to_python(value)
         if value in validators.EMPTY_VALUES:
             return None
-
+        if self.localize:
+            value = formats.sanitize_separators(value)
         try:
             value = int(str(value))
         except (ValueError, TypeError):
@@ -233,11 +245,10 @@ class FloatField(IntegerField):
         value = super(IntegerField, self).to_python(value)
         if value in validators.EMPTY_VALUES:
             return None
-
+        if self.localize:
+            value = formats.sanitize_separators(value)
         try:
-            # We always accept dot as decimal separator
-            if isinstance(value, str) or isinstance(value, unicode):
-                value = float(value.replace(get_format('DECIMAL_SEPARATOR'), '.'))
+            value = float(value)
         except (ValueError, TypeError):
             raise ValidationError(self.error_messages['invalid'])
         return value
@@ -270,11 +281,11 @@ class DecimalField(Field):
         """
         if value in validators.EMPTY_VALUES:
             return None
+        if self.localize:
+            value = formats.sanitize_separators(value)
         value = smart_str(value).strip()
         try:
-            # We always accept dot as decimal separator
-            if isinstance(value, str) or isinstance(value, unicode):
-                value = Decimal(value.replace(get_format('DECIMAL_SEPARATOR'), '.'))
+            value = Decimal(value)
         except DecimalException:
             raise ValidationError(self.error_messages['invalid'])
         return value
@@ -283,6 +294,11 @@ class DecimalField(Field):
         super(DecimalField, self).validate(value)
         if value in validators.EMPTY_VALUES:
             return
+        # Check for NaN, Inf and -Inf values. We can't compare directly for NaN,
+        # since it is never equal to itself. However, NaN is the only value that
+        # isn't equal to itself, so we can use this to identify NaN
+        if value != value or value == Decimal("Inf") or value == Decimal("-Inf"):
+            raise ValidationError(self.error_messages['invalid'])
         sign, digittuple, exponent = value.as_tuple()
         decimals = abs(exponent)
         # digittuple doesn't include any leading zeros.
@@ -324,7 +340,7 @@ class DateField(Field):
             return value.date()
         if isinstance(value, datetime.date):
             return value
-        for format in self.input_formats or get_format('DATE_INPUT_FORMATS'):
+        for format in self.input_formats or formats.get_format('DATE_INPUT_FORMATS'):
             try:
                 return datetime.date(*time.strptime(value, format)[:3])
             except ValueError:
@@ -350,7 +366,7 @@ class TimeField(Field):
             return None
         if isinstance(value, datetime.time):
             return value
-        for format in self.input_formats or get_format('TIME_INPUT_FORMATS'):
+        for format in self.input_formats or formats.get_format('TIME_INPUT_FORMATS'):
             try:
                 return datetime.time(*time.strptime(value, format)[3:6])
             except ValueError:
@@ -384,7 +400,7 @@ class DateTimeField(Field):
             if len(value) != 2:
                 raise ValidationError(self.error_messages['invalid'])
             value = '%s %s' % tuple(value)
-        for format in self.input_formats or get_format('DATETIME_INPUT_FORMATS'):
+        for format in self.input_formats or formats.get_format('DATETIME_INPUT_FORMATS'):
             try:
                 return datetime.datetime(*time.strptime(value, format)[:6])
             except ValueError:
@@ -467,7 +483,7 @@ class ImageField(FileField):
         f = super(ImageField, self).to_python(data)
         if f is None:
             return None
-            
+
         # Try to import PIL in either of the two ways it can end up installed.
         try:
             from PIL import Image
@@ -584,7 +600,7 @@ class ChoiceField(Field):
 
     def __init__(self, choices=(), required=True, widget=None, label=None,
                  initial=None, help_text=None, *args, **kwargs):
-        super(ChoiceField, self).__init__(required=required, widget=widget, label=label, 
+        super(ChoiceField, self).__init__(required=required, widget=widget, label=label,
                                         initial=initial, help_text=help_text, *args, **kwargs)
         self.choices = choices
 
@@ -616,7 +632,7 @@ class ChoiceField(Field):
     def valid_value(self, value):
         "Check to see if the provided value is a valid choice"
         for k, v in self.choices:
-            if type(v) in (tuple, list):
+            if isinstance(v, (list, tuple)):
                 # This is an optgroup, so look inside the group for options
                 for k2, v2 in v:
                     if value == smart_unicode(k2):
@@ -829,9 +845,14 @@ class SplitDateTimeField(MultiValueField):
         errors = self.default_error_messages.copy()
         if 'error_messages' in kwargs:
             errors.update(kwargs['error_messages'])
+        localize = kwargs.get('localize', False)
         fields = (
-            DateField(input_formats=input_date_formats, error_messages={'invalid': errors['invalid_date']}),
-            TimeField(input_formats=input_time_formats, error_messages={'invalid': errors['invalid_time']}),
+            DateField(input_formats=input_date_formats,
+                      error_messages={'invalid': errors['invalid_date']},
+                      localize=localize),
+            TimeField(input_formats=input_time_formats,
+                      error_messages={'invalid': errors['invalid_time']},
+                      localize=localize),
         )
         super(SplitDateTimeField, self).__init__(fields, *args, **kwargs)
 

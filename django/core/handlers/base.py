@@ -70,10 +70,10 @@ class BaseHandler(object):
 
         try:
             try:
-                # Reset the urlconf for this thread.
-                urlresolvers.set_urlconf(None)
-                # Obtain a default resolver. It's needed early for handling 404's.
-                resolver = urlresolvers.RegexURLResolver(r'^/', None)
+                # Setup default url resolver for this thread.
+                urlconf = settings.ROOT_URLCONF
+                urlresolvers.set_urlconf(urlconf)
+                resolver = urlresolvers.RegexURLResolver(r'^/', urlconf)
 
                 # Apply request middleware
                 for middleware_method in self._request_middleware:
@@ -81,12 +81,11 @@ class BaseHandler(object):
                     if response:
                         return response
 
-                # Get urlconf from request object, if available.  Otherwise use default.
-                urlconf = getattr(request, "urlconf", settings.ROOT_URLCONF)
-                # Set the urlconf for this thread to the one specified above.
-                urlresolvers.set_urlconf(urlconf)
-                # Reset the resolver with a possibly new urlconf
-                resolver = urlresolvers.RegexURLResolver(r'^/', urlconf)
+                if hasattr(request, "urlconf"):
+                    # Reset url resolver with a custom urlconf.
+                    urlconf = request.urlconf
+                    urlresolvers.set_urlconf(urlconf)
+                    resolver = urlresolvers.RegexURLResolver(r'^/', urlconf)
 
                 callback, callback_args, callback_kwargs = resolver.resolve(
                         request.path_info)
@@ -138,9 +137,8 @@ class BaseHandler(object):
                 raise
             except: # Handle everything else, including SuspiciousOperation, etc.
                 # Get the exception info now, in case another exception is thrown later.
-                exc_info = sys.exc_info()
                 receivers = signals.got_request_exception.send(sender=self.__class__, request=request)
-                return self.handle_uncaught_exception(request, resolver, exc_info)
+                return self.handle_uncaught_exception(request, resolver, sys.exc_info())
         finally:
             # Reset URLconf for this thread on the way out for complete
             # isolation of request.urlconf
@@ -174,6 +172,9 @@ class BaseHandler(object):
             request_repr = "Request repr() unavailable"
         message = "%s\n\n%s" % (self._get_traceback(exc_info), request_repr)
         mail_admins(subject, message, fail_silently=True)
+        # If Http500 handler is not installed, re-raise last exception
+        if resolver.urlconf_module is None:
+            raise exc_info[1], None, exc_info[2]
         # Return an HttpResponse that displays a friendly error message.
         callback, param_dict = resolver.resolve500()
         return callback(request, **param_dict)

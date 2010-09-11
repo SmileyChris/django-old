@@ -184,6 +184,12 @@ def activate(language):
     language and installs it as the current translation object for the current
     thread.
     """
+    if isinstance(language, basestring) and language == 'no':
+        warnings.warn(
+            "The use of the language code 'no' is deprecated. "
+            "Please use the 'nb' translation instead.",
+            PendingDeprecationWarning
+        )
     _active[currentThread()] = translation(language)
 
 def deactivate():
@@ -218,8 +224,9 @@ def get_language():
 def get_language_bidi():
     """
     Returns selected language's BiDi layout.
-    False = left-to-right layout
-    True = right-to-left layout
+    
+    * False = left-to-right layout
+    * True = right-to-left layout
     """
     from django.conf import settings
     
@@ -489,7 +496,7 @@ def parse_accept_lang_header(lang_string):
             return []
         priority = priority and float(priority) or 1.0
         result.append((lang, priority))
-    result.sort(lambda x, y: -cmp(x[1], y[1]))
+    result.sort(key=lambda k: k[1], reverse=True)
     return result
 
 # get_date_formats and get_partial_date_formats aren't used anymore by Django
@@ -504,8 +511,8 @@ def get_date_formats():
     formats provided in the settings will be used.
     """
     warnings.warn(
-        '`django.utils.translation.get_date_formats` is deprecated. '
-        'Please update your code to use the new i18n aware formatting.',
+        "'django.utils.translation.get_date_formats' is deprecated. "
+        "Please update your code to use the new i18n aware formatting.",
         PendingDeprecationWarning
     )
     from django.conf import settings
@@ -527,8 +534,8 @@ def get_partial_date_formats():
     formats provided in the settings will be used.
     """
     warnings.warn(
-        '`django.utils.translation.get_partial_date_formats` is deprecated. '
-        'Please update your code to use the new i18n aware formatting.',
+        "'django.utils.translation.get_partial_date_formats' is deprecated. "
+        "Please update your code to use the new i18n aware formatting.",
         PendingDeprecationWarning
     )
     from django.conf import settings

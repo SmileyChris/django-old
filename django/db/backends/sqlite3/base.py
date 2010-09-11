@@ -1,12 +1,13 @@
 """
 SQLite3 backend for django.
 
-Python 2.3 and 2.4 require pysqlite2 (http://pysqlite.org/).
+Python 2.4 requires pysqlite2 (http://pysqlite.org/).
 
 Python 2.5 and later can use a pysqlite2 module or the sqlite3 module in the
 standard library.
 """
 
+import re
 import sys
 
 from django.db import utils
@@ -63,13 +64,17 @@ class DatabaseFeatures(BaseDatabaseFeatures):
 class DatabaseOperations(BaseDatabaseOperations):
     def date_extract_sql(self, lookup_type, field_name):
         # sqlite doesn't support extract, so we fake it with the user-defined
-        # function django_extract that's registered in connect().
-        return 'django_extract("%s", %s)' % (lookup_type.lower(), field_name)
+        # function django_extract that's registered in connect(). Note that
+        # single quotes are used because this is a string (and could otherwise
+        # cause a collision with a field name).
+        return "django_extract('%s', %s)" % (lookup_type.lower(), field_name)
 
     def date_trunc_sql(self, lookup_type, field_name):
         # sqlite doesn't support DATE_TRUNC, so we fake it with a user-defined
-        # function django_date_trunc that's registered in connect().
-        return 'django_date_trunc("%s", %s)' % (lookup_type.lower(), field_name)
+        # function django_date_trunc that's registered in connect(). Note that
+        # single quotes are used because this is a string (and could otherwise
+        # cause a collision with a field name).
+        return "django_date_trunc('%s', %s)" % (lookup_type.lower(), field_name)
 
     def drop_foreignkey_sql(self):
         return ""
@@ -171,7 +176,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             self.connection.create_function("django_extract", 2, _sqlite_extract)
             self.connection.create_function("django_date_trunc", 2, _sqlite_date_trunc)
             self.connection.create_function("regexp", 2, _sqlite_regexp)
-            connection_created.send(sender=self.__class__)
+            connection_created.send(sender=self.__class__, connection=self)
         return self.connection.cursor(factory=SQLiteCursorWrapper)
 
     def close(self):
@@ -181,6 +186,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         if self.settings_dict['NAME'] != ":memory:":
             BaseDatabaseWrapper.close(self)
 
+FORMAT_QMARK_REGEX = re.compile(r'(?![^%])%s')
+
 class SQLiteCursorWrapper(Database.Cursor):
     """
     Django uses "format" style placeholders, but pysqlite2 uses "qmark" style.
@@ -188,8 +195,8 @@ class SQLiteCursorWrapper(Database.Cursor):
     you'll need to use "%%s".
     """
     def execute(self, query, params=()):
+        query = self.convert_query(query)
         try:
-            query = self.convert_query(query, len(params))
             return Database.Cursor.execute(self, query, params)
         except Database.IntegrityError, e:
             raise utils.IntegrityError, utils.IntegrityError(*tuple(e)), sys.exc_info()[2]
@@ -197,19 +204,16 @@ class SQLiteCursorWrapper(Database.Cursor):
             raise utils.DatabaseError, utils.DatabaseError(*tuple(e)), sys.exc_info()[2]
 
     def executemany(self, query, param_list):
+        query = self.convert_query(query)
         try:
-            query = self.convert_query(query, len(param_list[0]))
             return Database.Cursor.executemany(self, query, param_list)
-        except (IndexError,TypeError):
-            # No parameter list provided
-            return None
         except Database.IntegrityError, e:
             raise utils.IntegrityError, utils.IntegrityError(*tuple(e)), sys.exc_info()[2]
         except Database.DatabaseError, e:
             raise utils.DatabaseError, utils.DatabaseError(*tuple(e)), sys.exc_info()[2]
 
-    def convert_query(self, query, num_params):
-        return query % tuple("?" * num_params)
+    def convert_query(self, query):
+        return FORMAT_QMARK_REGEX.sub('?', query).replace('%%','%')
 
 def _sqlite_extract(lookup_type, dt):
     if dt is None:

@@ -1,12 +1,10 @@
-.. _ref-templates-api:
-
 ====================================================
 The Django template language: For Python programmers
 ====================================================
 
 This document explains the Django template system from a technical
 perspective -- how it works and how to extend it. If you're just looking for
-reference on the language syntax, see :ref:`topics-templates`.
+reference on the language syntax, see :doc:`/topics/templates`.
 
 If you're looking to use the Django template system as part of another
 application -- i.e., without the rest of the framework -- make sure to read
@@ -308,7 +306,7 @@ called **context processors** -- that take a request object as their argument
 and return a dictionary of items to be merged into the context. By default,
 :setting:`TEMPLATE_CONTEXT_PROCESSORS` is set to::
 
-    ("django.core.context_processors.auth",
+    ("django.contrib.auth.context_processors.auth",
     "django.core.context_processors.debug",
     "django.core.context_processors.i18n",
     "django.core.context_processors.media",
@@ -323,12 +321,25 @@ and return a dictionary of items to be merged into the context. By default,
 
 .. versionadded:: 1.2
    The ``'messages'`` context processor was added.  For more information, see
-   the :ref:`messages documentation <ref-contrib-messages>`.
+   the :doc:`messages documentation </ref/contrib/messages>`.
+
+.. versionchanged:: 1.2
+    The auth context processor was moved in this release from its old location
+    ``django.core.context_processors.auth`` to
+    ``django.contrib.auth.context_processors.auth``.
 
 Each processor is applied in order. That means, if one processor adds a
 variable to the context and a second processor adds a variable with the same
 name, the second will override the first. The default processors are explained
 below.
+
+.. admonition:: When context processors are applied
+
+    When you use ``RequestContext``, the variables you supply directly
+    are added first, followed any variables supplied by context
+    processors. This means that a context processor may overwrite a
+    variable you've supplied, so take care to avoid variable names
+    which overlap with those supplied by your context processors.
 
 Also, you can give ``RequestContext`` a list of additional processors, using the
 optional, third positional argument, ``processors``. In this example, the
@@ -360,8 +371,8 @@ optional, third positional argument, ``processors``. In this example, the
 
 Here's what each of the default processors does:
 
-django.core.context_processors.auth
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+django.contrib.auth.context_processors.auth
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If :setting:`TEMPLATE_CONTEXT_PROCESSORS` contains this processor, every
 ``RequestContext`` will contain these three variables:
@@ -371,16 +382,20 @@ If :setting:`TEMPLATE_CONTEXT_PROCESSORS` contains this processor, every
       logged in).
 
     * ``messages`` -- A list of messages (as strings) that have been set
-      via the :ref:`messages framework <ref-contrib-messages>`.
+      via the :doc:`messages framework </ref/contrib/messages>`.
 
     * ``perms`` -- An instance of
       ``django.core.context_processors.PermWrapper``, representing the
       permissions that the currently logged-in user has.
 
 .. versionchanged:: 1.2
+    This context processor was moved in this release from
+    ``django.core.context_processors.auth`` to its current location.
+
+.. versionchanged:: 1.2
    Prior to version 1.2, the ``messages`` variable was a lazy accessor for
    ``user.get_and_delete_messages()``. It has been changed to include any
-   messages added via the :ref:`messages framework <ref-contrib-messages>`.
+   messages added via the :doc:`messages framework </ref/contrib/messages>`.
 
 django.core.context_processors.debug
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -406,7 +421,7 @@ If :setting:`TEMPLATE_CONTEXT_PROCESSORS` contains this processor, every
     * ``LANGUAGE_CODE`` -- ``request.LANGUAGE_CODE``, if it exists. Otherwise,
       the value of the :setting:`LANGUAGE_CODE` setting.
 
-See :ref:`topics-i18n` for more.
+See :doc:`/topics/i18n/index` for more.
 
 django.core.context_processors.media
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -423,7 +438,7 @@ django.core.context_processors.csrf
 .. versionadded:: 1.2
 
 This processor adds a token that is needed by the ``csrf_token`` template tag
-for protection against :ref:`Cross Site Request Forgeries <ref-contrib-csrf>`.
+for protection against :doc:`Cross Site Request Forgeries </ref/contrib/csrf>`.
 
 django.core.context_processors.request
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -441,7 +456,7 @@ If :setting:`TEMPLATE_CONTEXT_PROCESSORS` contains this processor, every
 
     * ``messages`` -- A list of messages (as strings) that have been set
       via the user model (using ``user.message_set.create``) or through
-      the :ref:`messages framework <ref-contrib-messages>`.
+      the :doc:`messages framework </ref/contrib/messages>`.
 
 .. versionadded:: 1.2
    This template context variable was previously supplied by the ``'auth'``
@@ -685,7 +700,7 @@ Configuring the template system in standalone mode
 
 Normally, Django will load all the configuration information it needs from its
 own default configuration file, combined with the settings in the module given
-in the :setting:`DJANGO_SETTINGS_MODULE` environment variable. But if you're
+in the :envvar:`DJANGO_SETTINGS_MODULE` environment variable. But if you're
 using the template system independently of the rest of Django, the environment
 variable approach isn't very convenient, because you probably want to configure
 the template system in line with the rest of your application rather than
@@ -699,7 +714,7 @@ settings you wish to specify. You might want to consider setting at least
 :setting:`TEMPLATE_DIRS` (if you're going to use template loaders),
 :setting:`DEFAULT_CHARSET` (although the default of ``utf-8`` is probably fine)
 and :setting:`TEMPLATE_DEBUG`. All available settings are described in the
-:ref:`settings documentation <ref-settings>`, and any setting starting with
+:doc:`settings documentation </ref/settings>`, and any setting starting with
 ``TEMPLATE_`` is of obvious interest.
 
 .. _topic-template-alternate-language:
@@ -707,7 +722,7 @@ and :setting:`TEMPLATE_DEBUG`. All available settings are described in the
 Using an alternative template language
 ======================================
 
-.. versionadded 1.2
+.. versionadded:: 1.2
 
 The Django ``Template`` and ``Loader`` classes implement a simple API for
 loading and rendering templates. By providing some simple wrapper classes that

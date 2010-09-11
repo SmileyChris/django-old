@@ -1,19 +1,17 @@
-.. _ref-models-querysets:
-
 ======================
 QuerySet API reference
 ======================
 
-.. currentmodule:: django.db.models
+.. currentmodule:: django.db.models.QuerySet
 
 This document describes the details of the ``QuerySet`` API. It builds on the
-material presented in the :ref:`model <topics-db-models>` and :ref:`database
-query <topics-db-queries>` guides, so you'll probably want to read and
+material presented in the :doc:`model </topics/db/models>` and :doc:`database
+query </topics/db/queries>` guides, so you'll probably want to read and
 understand those documents before reading this one.
 
 Throughout this reference we'll use the :ref:`example weblog models
-<queryset-model-example>` presented in the :ref:`database query guide
-<topics-db-queries>`.
+<queryset-model-example>` presented in the :doc:`database query guide
+</topics/db/queries>`.
 
 .. _when-querysets-are-evaluated:
 
@@ -92,7 +90,7 @@ time, defeating the purpose of caching). This means that when you unpickle a
 than the results that are currently in the database.
 
 If you only want to pickle the necessary information to recreate the
-``Queryset`` from the database at a later time, pickle the ``query`` attribute
+``QuerySet`` from the database at a later time, pickle the ``query`` attribute
 of the ``QuerySet``. You can then recreate the original ``QuerySet`` (without
 any results loaded) using some code like this::
 
@@ -105,6 +103,14 @@ The ``query`` attribute is an opaque object. It represents the internals of
 the query construction and is not part of the public API. However, it is safe
 (and fully supported) to pickle and unpickle the attribute's contents as
 described here.
+
+.. admonition:: You can't share pickles between versions
+
+	Pickles of QuerySets are only valid for the version of Django that
+	was used to generate them. If you generate a pickle using Django
+	version N, there is no guarantee that pickle will be readable with
+	Django version N+1. Pickles should not be used as part of a long-term
+	archival strategy.
 
 .. _pickle: http://docs.python.org/library/pickle.html
 
@@ -130,6 +136,8 @@ executed.
 ``filter(**kwargs)``
 ~~~~~~~~~~~~~~~~~~~~
 
+.. method:: filter(**kwargs)
+
 Returns a new ``QuerySet`` containing objects that match the given lookup
 parameters.
 
@@ -139,6 +147,8 @@ underlying SQL statement.
 
 ``exclude(**kwargs)``
 ~~~~~~~~~~~~~~~~~~~~~
+
+.. method:: exclude(**kwargs)
 
 Returns a new ``QuerySet`` containing objects that do *not* match the given
 lookup parameters.
@@ -166,12 +176,14 @@ In SQL terms, that evaluates to::
 
     SELECT ...
     WHERE NOT pub_date > '2005-1-3'
-    OR NOT headline = 'Hello'
+    AND NOT headline = 'Hello'
 
 Note the second example is more restrictive.
 
 ``annotate(*args, **kwargs)``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. method:: annotate(*args, **kwargs)
 
 .. versionadded:: 1.1
 
@@ -209,11 +221,13 @@ control the name of the annotation::
     >>> q[0].number_of_entries
     42
 
-For an in-depth discussion of aggregation, see :ref:`the topic guide on
-Aggregation <topics-db-aggregation>`.
+For an in-depth discussion of aggregation, see :doc:`the topic guide on
+Aggregation </topics/db/aggregation>`.
 
 ``order_by(*fields)``
 ~~~~~~~~~~~~~~~~~~~~~
+
+.. method:: order_by(*fields)
 
 By default, results returned by a ``QuerySet`` are ordered by the ordering
 tuple given by the ``ordering`` option in the model's ``Meta``. You can
@@ -289,6 +303,8 @@ You can tell if a query is ordered or not by checking the
 ``reverse()``
 ~~~~~~~~~~~~~
 
+.. method:: reverse()
+
 .. versionadded:: 1.0
 
 Use the ``reverse()`` method to reverse the order in which a queryset's
@@ -314,10 +330,10 @@ a model which defines a default ordering, or when using
 ordering was undefined prior to calling ``reverse()``, and will remain
 undefined afterward).
 
-.. _queryset-distinct:
-
 ``distinct()``
 ~~~~~~~~~~~~~~
+
+.. method:: distinct()
 
 Returns a new ``QuerySet`` that uses ``SELECT DISTINCT`` in its SQL query. This
 eliminates duplicate rows from the query results.
@@ -347,14 +363,13 @@ query spans multiple tables, it's possible to get duplicate results when a
     ``values()`` together, be careful when ordering by fields not in the
     ``values()`` call.
 
-
-.. _queryset-values:
-
 ``values(*fields)``
 ~~~~~~~~~~~~~~~~~~~
 
-Returns a ``ValuesQuerySet`` -- a ``QuerySet`` that evaluates to a list of
-dictionaries instead of model-instance objects.
+.. method:: values(*fields)
+
+Returns a ``ValuesQuerySet`` -- a ``QuerySet`` that returns dictionaries when
+used as an iterable, rather than model-instance objects.
 
 Each of those dictionaries represents an object, with the keys corresponding to
 the attribute names of model objects.
@@ -410,6 +425,11 @@ A couple of subtleties that are worth mentioning:
     * When using ``values()`` together with ``distinct()``, be aware that
       ordering can affect the results. See the note in the `distinct()`_
       section, above, for details.
+    * If you use a ``values()`` clause after an ``extra()`` clause,
+      any fields defined by a ``select`` argument in the ``extra()``
+      must be explicitly included in the ``values()`` clause. However,
+      if the ``extra()`` clause is used after the ``values()``, the
+      fields added by the select will be included automatically.
 
 .. versionadded:: 1.0
 
@@ -436,12 +456,14 @@ individualism.
 ``values_list(*fields)``
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
+.. method:: values_list(*fields)
+
 .. versionadded:: 1.0
 
-This is similar to ``values()`` except that instead of returning a list of
-dictionaries, it returns a list of tuples. Each tuple contains the value from
-the respective field passed into the ``values_list()`` call -- so the first
-item is the first field, etc. For example::
+This is similar to ``values()`` except that instead of returning dictionaries,
+it returns tuples when iterated over. Each tuple contains the value from the
+respective field passed into the ``values_list()`` call -- so the first item is
+the first field, etc. For example::
 
     >>> Entry.objects.values_list('id', 'headline')
     [(1, u'First entry'), ...]
@@ -463,6 +485,8 @@ fields in the model, in the order they were declared.
 
 ``dates(field, kind, order='ASC')``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. method:: dates(field, kind, order='ASC')
 
 Returns a ``DateQuerySet`` -- a ``QuerySet`` that evaluates to a list of
 ``datetime.datetime`` objects representing all available dates of a particular
@@ -498,6 +522,8 @@ Examples::
 ``none()``
 ~~~~~~~~~~
 
+.. method:: none()
+
 .. versionadded:: 1.0
 
 Returns an ``EmptyQuerySet`` -- a ``QuerySet`` that always evaluates to
@@ -511,7 +537,9 @@ Examples::
     []
 
 ``all()``
-~~~~~~~~~~
+~~~~~~~~~
+
+.. method:: all()
 
 .. versionadded:: 1.0
 
@@ -525,6 +553,8 @@ definitely have a ``QuerySet`` to work with.
 
 ``select_related()``
 ~~~~~~~~~~~~~~~~~~~~
+
+.. method:: select_related()
 
 Returns a ``QuerySet`` that will automatically "follow" foreign-key
 relationships, selecting that additional related-object data when it executes
@@ -642,10 +672,10 @@ related object.
 ``OneToOneFields`` will not be traversed in the reverse direction if you
 are performing a depth-based ``select_related``.
 
-.. _queryset-extra:
-
 ``extra(select=None, where=None, params=None, tables=None, order_by=None, select_params=None)``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. method:: extra(select=None, where=None, params=None, tables=None, order_by=None, select_params=None)
 
 Sometimes, the Django query syntax by itself can't easily express a complex
 ``WHERE`` clause. For these edge cases, Django provides the ``extra()``
@@ -673,9 +703,10 @@ of the arguments is required, but you should use at least one of them.
     greater than Jan. 1, 2006.
 
     Django inserts the given SQL snippet directly into the ``SELECT``
-    statement, so the resulting SQL of the above example would be::
+    statement, so the resulting SQL of the above example would be something
+    like::
 
-        SELECT blog_entry.*, (pub_date > '2006-01-01')
+        SELECT blog_entry.*, (pub_date > '2006-01-01') AS is_recent
         FROM blog_entry;
 
 
@@ -804,10 +835,10 @@ of the arguments is required, but you should use at least one of them.
 
         Entry.objects.extra(where=['headline=%s'], params=['Lennon'])
 
-.. _queryset-defer:
-
 ``defer(*fields)``
 ~~~~~~~~~~~~~~~~~~
+
+.. method:: defer(*fields)
 
 .. versionadded:: 1.1
 
@@ -820,7 +851,7 @@ the database.
 
 This is done by passing the names of the fields to not load to ``defer()``::
 
-    Entry.objects.defer("lede", "body")
+    Entry.objects.defer("headline", "body")
 
 A queryset that has deferred fields will still return model instances. Each
 deferred field will be retrieved from the database if you access that field
@@ -829,8 +860,8 @@ deferred field will be retrieved from the database if you access that field
 You can make multiple calls to ``defer()``. Each call adds new fields to the
 deferred set::
 
-    # Defers both the body and lede fields.
-    Entry.objects.defer("body").filter(headline="Lennon").defer("lede")
+    # Defers both the body and headline fields.
+    Entry.objects.defer("body").filter(rating=5).defer("headline")
 
 The order in which fields are added to the deferred set does not matter. Calling ``defer()`` with a field name that has already been deferred is harmless (the field will still be deferred).
 
@@ -838,7 +869,7 @@ You can defer loading of fields in related models (if the related models are
 loading via ``select_related()``) by using the standard double-underscore
 notation to separate related fields::
 
-    Blog.objects.select_related().defer("entry__lede", "entry__body")
+    Blog.objects.select_related().defer("entry__headline", "entry__body")
 
 If you want to clear the set of deferred fields, pass ``None`` as a parameter
 to ``defer()``::
@@ -865,7 +896,9 @@ eventually).
     settled down and you understand where the hot-points are.
 
 ``only(*fields)``
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+
+.. method:: only(*fields)
 
 .. versionadded:: 1.1
 
@@ -887,7 +920,7 @@ immediately; the remainder are deferred. Thus, successive calls to ``only()``
 result in only the final fields being considered::
 
     # This will defer all fields except the headline.
-    Entry.objects.only("body", "lede").only("headline")
+    Entry.objects.only("body", "rating").only("headline")
 
 Since ``defer()`` acts incrementally (adding fields to the deferred list), you
 can combine calls to ``only()`` and ``defer()`` and things will behave
@@ -901,7 +934,9 @@ logically::
     Entry.objects.defer("body").only("headline", "body")
 
 ``using(alias)``
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
+
+.. method:: using(alias)
 
 .. versionadded:: 1.2
 
@@ -928,10 +963,10 @@ something *other than* a ``QuerySet``.
 These methods do not use a cache (see :ref:`caching-and-querysets`). Rather,
 they query the database each time they're called.
 
-.. _get-kwargs:
-
 ``get(**kwargs)``
 ~~~~~~~~~~~~~~~~~
+
+.. method:: get(**kwargs)
 
 Returns the object matching the given lookup parameters, which should be in
 the format described in `Field lookups`_.
@@ -960,6 +995,8 @@ The ``DoesNotExist`` exception inherits from
 ``create(**kwargs)``
 ~~~~~~~~~~~~~~~~~~~~
 
+.. method:: create(**kwargs)
+
 A convenience method for creating an object and saving it all in one step.  Thus::
 
     p = Person.objects.create(first_name="Bruce", last_name="Springsteen")
@@ -981,6 +1018,8 @@ exception if you are using manual primary keys.
 
 ``get_or_create(**kwargs)``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. method:: get_or_create(**kwargs)
 
 A convenience method for looking up an object with the given kwargs, creating
 one if necessary.
@@ -1050,6 +1089,8 @@ has a side effect on your data. For more, see `Safe methods`_ in the HTTP spec.
 ``count()``
 ~~~~~~~~~~~
 
+.. method:: count()
+
 Returns an integer representing the number of objects in the database matching
 the ``QuerySet``. ``count()`` never raises exceptions.
 
@@ -1074,6 +1115,8 @@ problems.
 ``in_bulk(id_list)``
 ~~~~~~~~~~~~~~~~~~~~
 
+.. method:: in_bulk(id_list)
+
 Takes a list of primary-key values and returns a dictionary mapping each
 primary-key value to an instance of the object with the given ID.
 
@@ -1088,10 +1131,10 @@ Example::
 
 If you pass ``in_bulk()`` an empty list, you'll get an empty dictionary.
 
-.. _queryset-iterator:
-
 ``iterator()``
 ~~~~~~~~~~~~~~
+
+.. method:: iterator()
 
 Evaluates the ``QuerySet`` (by performing the query) and returns an
 `iterator`_ over the results. A ``QuerySet`` typically caches its
@@ -1108,6 +1151,8 @@ been evaluated will force it to evaluate again, repeating the query.
 
 ``latest(field_name=None)``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. method:: latest(field_name=None)
 
 Returns the latest object in the table, by date, using the ``field_name``
 provided as the date field.
@@ -1128,6 +1173,8 @@ Note ``latest()`` exists purely for convenience and readability.
 
 ``aggregate(*args, **kwargs)``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. method:: aggregate(*args, **kwargs)
 
 .. versionadded:: 1.1
 
@@ -1155,11 +1202,13 @@ control the name of the aggregation value that is returned::
     >>> q = Blog.objects.aggregate(number_of_entries=Count('entry'))
     {'number_of_entries': 16}
 
-For an in-depth discussion of aggregation, see :ref:`the topic guide on
-Aggregation <topics-db-aggregation>`.
+For an in-depth discussion of aggregation, see :doc:`the topic guide on
+Aggregation </topics/db/aggregation>`.
 
 ``exists()``
 ~~~~~~~~~~~~
+
+.. method:: exists()
 
 .. versionadded:: 1.2
 
@@ -1182,6 +1231,8 @@ specified as keyword arguments to the ``QuerySet`` methods ``filter()``,
 ``exclude()`` and ``get()``.
 
 For an introduction, see :ref:`field-lookups-intro`.
+
+.. fieldlookup:: exact
 
 exact
 ~~~~~
@@ -1212,7 +1263,9 @@ SQL equivalents::
     a Django setting. It's possible to configure your MySQL tables to use
     case-sensitive comparisons, but some trade-offs are involved. For more
     information about this, see the :ref:`collation section <mysql-collation>`
-    in the :ref:`databases <ref-databases>` documentation.
+    in the :doc:`databases </ref/databases>` documentation.
+
+.. fieldlookup:: iexact
 
 iexact
 ~~~~~~
@@ -1237,6 +1290,8 @@ BLoG'``, etc.
     comparisons. SQLite does not do case-insensitive matching for Unicode
     strings.
 
+.. fieldlookup:: contains
+
 contains
 ~~~~~~~~
 
@@ -1256,6 +1311,8 @@ Note this will match the headline ``'Today Lennon honored'`` but not
 SQLite doesn't support case-sensitive ``LIKE`` statements; ``contains`` acts
 like ``icontains`` for SQLite.
 
+.. fieldlookup:: icontains
+
 icontains
 ~~~~~~~~~
 
@@ -1274,6 +1331,8 @@ SQL equivalent::
     When using the SQLite backend and Unicode (non-ASCII) strings, bear in
     mind the :ref:`database note <sqlite-string-matching>` about string
     comparisons.
+
+.. fieldlookup:: in
 
 in
 ~~
@@ -1350,6 +1409,8 @@ extract two field values, where only one is expected::
     the first query. Without it, a nested query would be executed, because
     :ref:`querysets-are-lazy`.
 
+.. fieldlookup:: gt
+
 gt
 ~~
 
@@ -1363,20 +1424,28 @@ SQL equivalent::
 
     SELECT ... WHERE id > 4;
 
+.. fieldlookup:: gte
+
 gte
 ~~~
 
 Greater than or equal to.
+
+.. fieldlookup:: lt
 
 lt
 ~~
 
 Less than.
 
+.. fieldlookup:: lte
+
 lte
 ~~~
 
 Less than or equal to.
+
+.. fieldlookup:: startswith
 
 startswith
 ~~~~~~~~~~
@@ -1393,6 +1462,8 @@ SQL equivalent::
 
 SQLite doesn't support case-sensitive ``LIKE`` statements; ``startswith`` acts
 like ``istartswith`` for SQLite.
+
+.. fieldlookup:: istartswith
 
 istartswith
 ~~~~~~~~~~~
@@ -1413,6 +1484,8 @@ SQL equivalent::
     mind the :ref:`database note <sqlite-string-matching>` about string
     comparisons.
 
+.. fieldlookup:: endswith
+
 endswith
 ~~~~~~~~
 
@@ -1428,6 +1501,8 @@ SQL equivalent::
 
 SQLite doesn't support case-sensitive ``LIKE`` statements; ``endswith`` acts
 like ``iendswith`` for SQLite.
+
+.. fieldlookup:: iendswith
 
 iendswith
 ~~~~~~~~~
@@ -1448,6 +1523,8 @@ SQL equivalent::
     mind the :ref:`database note <sqlite-string-matching>` about string
     comparisons.
 
+.. fieldlookup:: range
+
 range
 ~~~~~
 
@@ -1466,6 +1543,8 @@ SQL equivalent::
 You can use ``range`` anywhere you can use ``BETWEEN`` in SQL -- for dates,
 numbers and even characters.
 
+.. fieldlookup:: year
+
 year
 ~~~~
 
@@ -1477,9 +1556,11 @@ Example::
 
 SQL equivalent::
 
-    SELECT ... WHERE EXTRACT('year' FROM pub_date) = '2005';
+    SELECT ... WHERE pub_date BETWEEN '2005-01-01' AND '2005-12-31 23:59:59.999999';
 
 (The exact SQL syntax varies for each database engine.)
+
+.. fieldlookup:: month
 
 month
 ~~~~~
@@ -1496,6 +1577,8 @@ SQL equivalent::
     SELECT ... WHERE EXTRACT('month' FROM pub_date) = '12';
 
 (The exact SQL syntax varies for each database engine.)
+
+.. fieldlookup:: day
 
 day
 ~~~
@@ -1515,6 +1598,8 @@ SQL equivalent::
 Note this will match any record with a pub_date on the third day of the month,
 such as January 3, July 3, etc.
 
+.. fieldlookup:: week_day
+
 week_day
 ~~~~~~~~
 
@@ -1522,19 +1607,21 @@ week_day
 
 For date/datetime fields, a 'day of the week' match.
 
+Takes an integer value representing the day of week from 1 (Sunday) to 7
+(Saturday).
+
 Example::
 
     Entry.objects.filter(pub_date__week_day=2)
 
-SQL equivalent::
-
-    SELECT ... WHERE EXTRACT('dow' FROM pub_date) = '2';
-
-(The exact SQL syntax varies for each database engine.)
+(No equivalent SQL code fragment is included for this lookup because
+implementation of the relevant query varies among different database engines.)
 
 Note this will match any record with a pub_date that falls on a Monday (day 2
 of the week), regardless of the month or year in which it occurs. Week days
 are indexed with day 1 being Sunday and day 7 being Saturday.
+
+.. fieldlookup:: isnull
 
 isnull
 ~~~~~~
@@ -1549,6 +1636,8 @@ Example::
 SQL equivalent::
 
     SELECT ... WHERE pub_date IS NULL;
+
+.. fieldlookup:: search
 
 search
 ~~~~~~
@@ -1568,6 +1657,8 @@ Note this is only available in MySQL and requires direct manipulation of the
 database to add the full-text index. By default Django uses BOOLEAN MODE for
 full text searches. `Please check MySQL documentation for additional details. <http://dev.mysql.com/doc/refman/5.1/en/fulltext-boolean.html>`_
 
+
+.. fieldlookup:: regex
 
 regex
 ~~~~~
@@ -1597,6 +1688,8 @@ SQL equivalents::
 
 Using raw strings (e.g., ``r'foo'`` instead of ``'foo'``) for passing in the
 regular expression syntax is recommended.
+
+.. fieldlookup:: iregex
 
 iregex
 ~~~~~~
@@ -1629,7 +1722,7 @@ Aggregation Functions
 Django provides the following aggregation functions in the
 ``django.db.models`` module. For details on how to use these
 aggregate functions, see
-:ref:`the topic guide on aggregation <topics-db-aggregation>`.
+:doc:`the topic guide on aggregation </topics/db/aggregation>`.
 
 ``Avg``
 ~~~~~~~

@@ -1,11 +1,6 @@
 import os
 import tempfile
 
-try:
-    import decimal
-except ImportError:
-    from django.utils import _decimal as decimal    # Python 2.3 fallback
-
 # Try to import PIL in either of the two ways it can end up installed.
 # Checking for the existence of Image is enough for CPython, but for PyPy,
 # you need to check for the underlying modules.
@@ -63,7 +58,14 @@ class BigInt(models.Model):
 class Post(models.Model):
     title = models.CharField(max_length=100)
     body = models.TextField()
-    
+
+class NullBooleanModel(models.Model):
+    nbfield = models.NullBooleanField()
+
+class BooleanModel(models.Model):
+    bfield = models.BooleanField()
+    string = models.CharField(max_length=10, default='abc')
+
 ###############################################################################
 # ImageField
 

@@ -6,6 +6,7 @@ from django.core.management.base import NoArgsCommand
 from django.core.management.color import no_style
 from django.core.management.sql import custom_sql_for_model, emit_post_sync_signal
 from django.db import connections, router, transaction, models, DEFAULT_DB_ALIAS
+from django.utils.datastructures import SortedDict
 from django.utils.importlib import import_module
 
 
@@ -57,24 +58,31 @@ class Command(NoArgsCommand):
         pending_references = {}
 
         # Build the manifest of apps and models that are to be synchronized
-        manifest = dict(
+        all_models = [
             (app.__name__.split('.')[-2],
                 [m for m in models.get_models(app, include_auto_created=True)
                 if router.allow_syncdb(db, m)])
             for app in models.get_apps()
+        ]
+        def model_installed(model):
+            opts = model._meta
+            converter = connection.introspection.table_name_converter
+            return not ((converter(opts.db_table) in tables) or
+                (opts.auto_created and converter(opts.auto_created._meta.db_table) in tables))
+
+        manifest = SortedDict(
+            (app_name, filter(model_installed, model_list))
+            for app_name, model_list in all_models
         )
 
         # Create the tables for each model
+        if verbosity >= 1:
+            print "Creating tables ..."
         for app_name, model_list in manifest.items():
             for model in model_list:
                 # Create the model's database table, if it doesn't already exist.
-                if verbosity >= 2:
+                if verbosity >= 3:
                     print "Processing %s.%s model" % (app_name, model._meta.object_name)
-                opts = model._meta
-                if (connection.introspection.table_name_converter(opts.db_table) in tables or
-                    (opts.auto_created and
-                    connection.introspection.table_name_converter(opts.auto_created._meta.db_table) in tables)):
-                    continue
                 sql, references = connection.creation.sql_create_model(model, self.style, seen_models)
                 seen_models.add(model)
                 created_models.add(model)
@@ -101,12 +109,14 @@ class Command(NoArgsCommand):
 
         # Install custom SQL for the app (but only if this
         # is a model we've just created)
+        if verbosity >= 1:
+            print "Installing custom SQL ..."
         for app_name, model_list in manifest.items():
             for model in model_list:
                 if model in created_models:
                     custom_sql = custom_sql_for_model(model, self.style, connection)
                     if custom_sql:
-                        if verbosity >= 1:
+                        if verbosity >= 2:
                             print "Installing custom SQL for %s.%s model" % (app_name, model._meta.object_name)
                         try:
                             for sql in custom_sql:
@@ -121,16 +131,18 @@ class Command(NoArgsCommand):
                         else:
                             transaction.commit_unless_managed(using=db)
                     else:
-                        if verbosity >= 2:
+                        if verbosity >= 3:
                             print "No custom SQL for %s.%s model" % (app_name, model._meta.object_name)
 
+        if verbosity >= 1:
+            print "Installing indexes ..."
         # Install SQL indicies for all newly created models
         for app_name, model_list in manifest.items():
             for model in model_list:
                 if model in created_models:
                     index_sql = connection.creation.sql_indexes_for_model(model, self.style)
                     if index_sql:
-                        if verbosity >= 1:
+                        if verbosity >= 2:
                             print "Installing index for %s.%s model" % (app_name, model._meta.object_name)
                         try:
                             for sql in index_sql:

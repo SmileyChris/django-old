@@ -18,9 +18,10 @@ __all__ = ('BaseForm', 'Form')
 NON_FIELD_ERRORS = '__all__'
 
 def pretty_name(name):
-    "Converts 'first_name' to 'First name'"
-    name = name[0].upper() + name[1:]
-    return name.replace('_', ' ')
+    """Converts 'first_name' to 'First name'"""
+    if not name:
+        return u''
+    return name.replace('_', ' ').capitalize()
 
 def get_declared_fields(bases, attrs, with_base_fields=True):
     """
@@ -34,7 +35,7 @@ def get_declared_fields(bases, attrs, with_base_fields=True):
     Also integrates any additional media definitions
     """
     fields = [(field_name, attrs.pop(field_name)) for field_name, obj in attrs.items() if isinstance(obj, Field)]
-    fields.sort(lambda x, y: cmp(x[1].creation_counter, y[1].creation_counter))
+    fields.sort(key=lambda x: x[1].creation_counter)
 
     # If this class is subclassing another Form, add that Form's fields.
     # Note that we loop over the bases in *reverse*. This is necessary in
@@ -212,7 +213,7 @@ class BaseForm(StrAndUnicode):
             normal_row = u'<tr%(html_class_attr)s><th>%(label)s</th><td>%(errors)s%(field)s%(help_text)s</td></tr>',
             error_row = u'<tr><td colspan="2">%s</td></tr>',
             row_ender = u'</td></tr>',
-            help_text_html = u'<br />%s',
+            help_text_html = u'<br /><span class="helptext">%s</span>',
             errors_on_separate_row = False)
 
     def as_ul(self):
@@ -221,7 +222,7 @@ class BaseForm(StrAndUnicode):
             normal_row = u'<li%(html_class_attr)s>%(errors)s%(label)s %(field)s%(help_text)s</li>',
             error_row = u'<li>%s</li>',
             row_ender = '</li>',
-            help_text_html = u' %s',
+            help_text_html = u' <span class="helptext">%s</span>',
             errors_on_separate_row = False)
 
     def as_p(self):
@@ -230,7 +231,7 @@ class BaseForm(StrAndUnicode):
             normal_row = u'<p%(html_class_attr)s>%(label)s %(field)s%(help_text)s</p>',
             error_row = u'%s',
             row_ender = '</p>',
-            help_text_html = u' %s',
+            help_text_html = u' <span class="helptext">%s</span>',
             errors_on_separate_row = True)
 
     def non_field_errors(self):
@@ -265,6 +266,7 @@ class BaseForm(StrAndUnicode):
             return
         self._clean_fields()
         self._clean_form()
+        self._post_clean()
         if self._errors:
             delattr(self, 'cleaned_data')
 
@@ -294,6 +296,13 @@ class BaseForm(StrAndUnicode):
             self.cleaned_data = self.clean()
         except ValidationError, e:
             self._errors[NON_FIELD_ERRORS] = self.error_class(e.messages)
+
+    def _post_clean(self):
+        """
+        An internal hook for performing additional cleaning after form cleaning
+        is complete. Used for model validation in model forms.
+        """
+        pass
 
     def clean(self):
         """
@@ -414,6 +423,7 @@ class BoundField(StrAndUnicode):
         """
         if not widget:
             widget = self.field.widget
+
         attrs = attrs or {}
         auto_id = self.auto_id
         if auto_id and 'id' not in attrs and 'id' not in widget.attrs:
@@ -421,6 +431,7 @@ class BoundField(StrAndUnicode):
                 attrs['id'] = auto_id
             else:
                 attrs['id'] = self.html_initial_id
+
         if not self.form.is_bound:
             data = self.form.initial.get(self.name, self.field.initial)
             if callable(data):
@@ -430,6 +441,8 @@ class BoundField(StrAndUnicode):
                 data = self.form.initial.get(self.name, self.field.initial)
             else:
                 data = self.data
+        data = self.field.prepare_value(data)
+
         if not only_initial:
             name = self.html_name
         else:

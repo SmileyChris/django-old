@@ -1,10 +1,5 @@
 import sys
 import time
-try:
-    set
-except NameError:
-    # Python 2.3 compat
-    from sets import Set as set
 
 from django.conf import settings
 from django.core.management import call_command
@@ -73,9 +68,6 @@ class BaseDatabaseCreation(object):
                 else:
                     field_output.extend(ref_output)
             table_output.append(' '.join(field_output))
-        if opts.order_with_respect_to:
-            table_output.append(style.SQL_FIELD(qn('_order')) + ' ' + \
-                style.SQL_COLTYPE(models.IntegerField().db_type(connection=self.connection)))
         for field_constraints in opts.unique_together:
             table_output.append(style.SQL_KEYWORD('UNIQUE') + ' (%s)' % \
                 ", ".join([style.SQL_FIELD(qn(opts.get_field(f).column)) for f in field_constraints]))
@@ -263,6 +255,8 @@ class BaseDatabaseCreation(object):
 
     def sql_indexes_for_field(self, model, f, style):
         "Return the CREATE INDEX SQL statements for a single model field"
+        from django.db.backends.util import truncate_name
+
         if f.db_index and not f.unique:
             qn = self.connection.ops.quote_name
             tablespace = f.db_tablespace or model._meta.db_tablespace
@@ -274,8 +268,9 @@ class BaseDatabaseCreation(object):
                     tablespace_sql = ''
             else:
                 tablespace_sql = ''
+            i_name = '%s_%s' % (model._meta.db_table, self._digest(f.column))
             output = [style.SQL_KEYWORD('CREATE INDEX') + ' ' +
-                style.SQL_TABLE(qn('%s_%s' % (model._meta.db_table, f.column))) + ' ' +
+                style.SQL_TABLE(qn(truncate_name(i_name, self.connection.ops.max_name_length()))) + ' ' +
                 style.SQL_KEYWORD('ON') + ' ' +
                 style.SQL_TABLE(qn(model._meta.db_table)) + ' ' +
                 "(%s)" % style.SQL_FIELD(qn(f.column)) +
@@ -318,7 +313,7 @@ class BaseDatabaseCreation(object):
                 (style.SQL_KEYWORD('ALTER TABLE'),
                 style.SQL_TABLE(qn(table)),
                 style.SQL_KEYWORD(self.connection.ops.drop_foreignkey_sql()),
-                style.SQL_FIELD(truncate_name(r_name, self.connection.ops.max_name_length()))))
+                style.SQL_FIELD(qn(truncate_name(r_name, self.connection.ops.max_name_length())))))
         del references_to_delete[model]
         return output
 
@@ -355,12 +350,17 @@ class BaseDatabaseCreation(object):
         can_rollback = self._rollback_works()
         self.connection.settings_dict["SUPPORTS_TRANSACTIONS"] = can_rollback
 
-        call_command('syncdb', verbosity=verbosity, interactive=False, database=self.connection.alias)
+        # Report syncdb messages at one level lower than that requested.
+        # This ensures we don't get flooded with messages during testing
+        # (unless you really ask to be flooded)
+        call_command('syncdb', verbosity=max(verbosity - 1, 0), interactive=False, database=self.connection.alias)
 
         if settings.CACHE_BACKEND.startswith('db://'):
-            from django.core.cache import parse_backend_uri
-            _, cache_name, _ = parse_backend_uri(settings.CACHE_BACKEND)
-            call_command('createcachetable', cache_name)
+            from django.core.cache import parse_backend_uri, cache
+            from django.db import router
+            if router.allow_syncdb(self.connection.alias, cache.cache_model_class):
+                _, cache_name, _ = parse_backend_uri(settings.CACHE_BACKEND)
+                call_command('createcachetable', cache_name, database=self.connection.alias)
 
         # Get a cursor (even though we don't need one yet). This has
         # the side effect of initializing the test database.
@@ -393,10 +393,8 @@ class BaseDatabaseCreation(object):
             if autoclobber or confirm == 'yes':
                 try:
                     if verbosity >= 1:
-                        print "Destroying old test database..."
+                        print "Destroying old test database '%s'..." % self.connection.alias
                     cursor.execute("DROP DATABASE %s" % qn(test_database_name))
-                    if verbosity >= 1:
-                        print "Creating test database..."
                     cursor.execute("CREATE DATABASE %s %s" % (qn(test_database_name), suffix))
                 except Exception, e:
                     sys.stderr.write("Got an error recreating the test database: %s\n" % e)

@@ -1,10 +1,11 @@
 try:
     from functools import update_wrapper, wraps
 except ImportError:
-    from django.utils.functional import update_wrapper, wraps  # Python 2.3, 2.4 fallback.
+    from django.utils.functional import update_wrapper, wraps  # Python 2.4 fallback.
 
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect
+from django.utils.decorators import available_attrs
 from django.utils.http import urlquote
 
 
@@ -25,17 +26,18 @@ def user_passes_test(test_func, login_url=None, redirect_field_name=REDIRECT_FIE
                 url = settings.LOGIN_URL
             return HttpResponseRedirect('%s?%s=%s' % (url, redirect_field_name,
                                                       path))
-        return wraps(view_func)(_wrapped_view)
+        return wraps(view_func, assigned=available_attrs(view_func))(_wrapped_view)
     return decorator
 
 
-def login_required(function=None, redirect_field_name=REDIRECT_FIELD_NAME):
+def login_required(function=None, redirect_field_name=REDIRECT_FIELD_NAME, login_url=None):
     """
     Decorator for views that checks that the user is logged in, redirecting
     to the log-in page if necessary.
     """
     actual_decorator = user_passes_test(
         lambda u: u.is_authenticated(),
+        login_url=login_url,
         redirect_field_name=redirect_field_name
     )
     if function:

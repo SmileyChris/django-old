@@ -1,5 +1,3 @@
-.. _topics-pagination:
-
 ==========
 Pagination
 ==========
@@ -221,7 +219,7 @@ them both with a simple ``except InvalidPage``.
 ``Page`` objects
 ================
 
-.. class:: Page(object_list, number, paginator):
+.. class:: Page(object_list, number, paginator)
 
 You usually won't construct :class:`Pages <Page>` by hand -- you'll get them
 using :meth:`Paginator.page`.

@@ -28,17 +28,13 @@ import datetime
 import time
 import re
 import os
+from decimal import Decimal
 
 from unittest import TestCase
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.forms import *
 from django.forms.widgets import RadioFieldRenderer
-
-try:
-    from decimal import Decimal
-except ImportError:
-    from django.utils._decimal import Decimal
 
 
 def fix_os_paths(x):
@@ -203,6 +199,9 @@ class FieldsTests(TestCase):
         self.assertEqual(f.clean('3.14'), Decimal("3.14"))
         self.assertEqual(f.clean(3.14), Decimal("3.14"))
         self.assertEqual(f.clean(Decimal('3.14')), Decimal("3.14"))
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a number.']", f.clean, 'NaN')
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a number.']", f.clean, 'Inf')
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a number.']", f.clean, '-Inf')
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a number.']", f.clean, 'a')
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a number.']", f.clean, u'łąść')
         self.assertEqual(f.clean('1.0 '), Decimal("1.0"))
@@ -408,6 +407,8 @@ class FieldsTests(TestCase):
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid e-mail address.']", f.clean, 'example@inv-.-alid.com')
         self.assertEqual(u'example@valid-----hyphens.com', f.clean('example@valid-----hyphens.com'))
         self.assertEqual(u'example@valid-with-hyphens.com', f.clean('example@valid-with-hyphens.com'))
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid e-mail address.']", f.clean, 'example@.com')
+        self.assertEqual(u'local@domain.with.idn.xyz\xe4\xf6\xfc\xdfabc.part.com', f.clean('local@domain.with.idn.xyzäöüßabc.part.com'))
 
     def test_email_regexp_for_performance(self):
         f = EmailField()
@@ -489,13 +490,14 @@ class FieldsTests(TestCase):
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid URL.']", f.clean, 'http://inv-.alid-.com')
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid URL.']", f.clean, 'http://inv-.-alid.com')
         self.assertEqual(u'http://valid-----hyphens.com/', f.clean('http://valid-----hyphens.com'))
+        self.assertEqual(u'http://some.idn.xyz\xe4\xf6\xfc\xdfabc.domain.com:123/blah', f.clean('http://some.idn.xyzäöüßabc.domain.com:123/blah'))
 
     def test_url_regex_ticket11198(self):
         f = URLField()
         # hangs "forever" if catastrophic backtracking in ticket:#11198 not fixed
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid URL.']", f.clean, 'http://%s' % ("X"*200,))
 
-        # a second test, to make sure the problem is really addressed, even on 
+        # a second test, to make sure the problem is really addressed, even on
         # domains that don't fail the domain label length check in the regex
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid URL.']", f.clean, 'http://%s' % ("X"*60,))
 
@@ -523,6 +525,13 @@ class FieldsTests(TestCase):
         self.assertRaises(ValidationError, f.clean, 'http://google.com/we-love-microsoft.html') # good domain, bad page
         try:
             f.clean('http://google.com/we-love-microsoft.html') # good domain, bad page
+        except ValidationError, e:
+            self.assertEqual("[u'This URL appears to be a broken link.']", str(e))
+        # Valid and existent IDN
+        self.assertEqual(u'http://\u05e2\u05d1\u05e8\u05d9\u05ea.idn.icann.org/', f.clean(u'http://עברית.idn.icann.org/'))
+        # Valid but non-existent IDN
+        try:
+            f.clean(u'http://broken.עברית.idn.icann.org/')
         except ValidationError, e:
             self.assertEqual("[u'This URL appears to be a broken link.']", str(e))
 
@@ -757,13 +766,13 @@ class FieldsTests(TestCase):
     # FilePathField ###############################################################
 
     def test_filepathfield_65(self):
-        path = forms.__file__
+        path = os.path.abspath(forms.__file__)
         path = os.path.dirname(path) + '/'
-        assert fix_os_paths(path).endswith('/django/forms/')
+        self.assertTrue(fix_os_paths(path).endswith('/django/forms/'))
 
     def test_filepathfield_66(self):
         path = forms.__file__
-        path = os.path.dirname(path) + '/'
+        path = os.path.dirname(os.path.abspath(path)) + '/'
         f = FilePathField(path=path)
         f.choices = [p for p in f.choices if p[0].endswith('.py')]
         f.choices.sort()
@@ -778,13 +787,13 @@ class FieldsTests(TestCase):
             ]
         for exp, got in zip(expected, fix_os_paths(f.choices)):
             self.assertEqual(exp[1], got[1])
-            assert got[0].endswith(exp[0])
+            self.assertTrue(got[0].endswith(exp[0]))
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Select a valid choice. fields.py is not one of the available choices.']", f.clean, 'fields.py')
         assert fix_os_paths(f.clean(path + 'fields.py')).endswith('/django/forms/fields.py')
 
     def test_filepathfield_67(self):
         path = forms.__file__
-        path = os.path.dirname(path) + '/'
+        path = os.path.dirname(os.path.abspath(path)) + '/'
         f = FilePathField(path=path, match='^.*?\.py$')
         f.choices.sort()
         expected = [
@@ -798,10 +807,10 @@ class FieldsTests(TestCase):
             ]
         for exp, got in zip(expected, fix_os_paths(f.choices)):
             self.assertEqual(exp[1], got[1])
-            assert got[0].endswith(exp[0])
+            self.assertTrue(got[0].endswith(exp[0]))
 
     def test_filepathfield_68(self):
-        path = forms.__file__
+        path = os.path.abspath(forms.__file__)
         path = os.path.dirname(path) + '/'
         f = FilePathField(path=path, recursive=True, match='^.*?\.py$')
         f.choices.sort()
@@ -818,7 +827,7 @@ class FieldsTests(TestCase):
             ]
         for exp, got in zip(expected, fix_os_paths(f.choices)):
             self.assertEqual(exp[1], got[1])
-            assert got[0].endswith(exp[0])
+            self.assertTrue(got[0].endswith(exp[0]))
 
     # SplitDateTimeField ##########################################################
 

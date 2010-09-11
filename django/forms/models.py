@@ -18,11 +18,6 @@ from widgets import SelectMultiple, HiddenInput, MultipleHiddenInput
 from widgets import media_property
 from formsets import BaseFormSet, formset_factory, DELETION_FIELD_NAME
 
-try:
-    set
-except NameError:
-    from sets import Set as set     # Python 2.3 fallback
-
 __all__ = (
     'ModelForm', 'BaseModelForm', 'model_to_dict', 'fields_for_model',
     'save_instance', 'form_for_fields', 'ModelChoiceField',
@@ -47,10 +42,6 @@ def construct_instance(form, instance, fields=None, exclude=None):
         if fields and f.name not in fields:
             continue
         if exclude and f.name in exclude:
-            continue
-        # OneToOneField doesn't allow assignment of None. Guard against that
-        # instead of allowing it and throwing an error.
-        if isinstance(f, models.OneToOneField) and cleaned_data[f.name] is None:
             continue
         # Defer saving file-type fields until after the other fields, so a
         # callable upload_to can use the values from other fields.
@@ -159,7 +150,7 @@ def model_to_dict(instance, fields=None, exclude=None):
             data[f.name] = f.value_from_object(instance)
     return data
 
-def fields_for_model(model, fields=None, exclude=None, widgets=None, formfield_callback=lambda f, **kwargs: f.formfield(**kwargs)):
+def fields_for_model(model, fields=None, exclude=None, widgets=None, formfield_callback=None):
     """
     Returns a ``SortedDict`` containing form fields for the given model.
 
@@ -171,6 +162,7 @@ def fields_for_model(model, fields=None, exclude=None, widgets=None, formfield_c
     in the ``fields`` argument.
     """
     field_list = []
+    ignored = []
     opts = model._meta
     for f in opts.fields + opts.many_to_many:
         if not f.editable:
@@ -183,12 +175,24 @@ def fields_for_model(model, fields=None, exclude=None, widgets=None, formfield_c
             kwargs = {'widget': widgets[f.name]}
         else:
             kwargs = {}
-        formfield = formfield_callback(f, **kwargs)
+
+        if formfield_callback is None:
+            formfield = f.formfield(**kwargs)
+        elif not callable(formfield_callback):
+            raise TypeError('formfield_callback must be a function or callable')
+        else:
+            formfield = formfield_callback(f, **kwargs)
+
         if formfield:
             field_list.append((f.name, formfield))
+        else:
+            ignored.append(f.name)
     field_dict = SortedDict(field_list)
     if fields:
-        field_dict = SortedDict([(f, field_dict.get(f)) for f in fields if (not exclude) or (exclude and f not in exclude)])
+        field_dict = SortedDict(
+            [(f, field_dict.get(f)) for f in fields
+                if ((not exclude) or (exclude and f not in exclude)) and (f not in ignored)]
+        )
     return field_dict
 
 class ModelFormOptions(object):
@@ -201,8 +205,7 @@ class ModelFormOptions(object):
 
 class ModelFormMetaclass(type):
     def __new__(cls, name, bases, attrs):
-        formfield_callback = attrs.pop('formfield_callback',
-                lambda f, **kwargs: f.formfield(**kwargs))
+        formfield_callback = attrs.pop('formfield_callback', None)
         try:
             parents = [b for b in bases if issubclass(b, ModelForm)]
         except NameError:
@@ -236,6 +239,8 @@ class BaseModelForm(BaseForm):
                  empty_permitted=False, instance=None):
         opts = self._meta
         if instance is None:
+            if opts.model is None:
+                raise ValueError('ModelForm has no model class specified.')
             # if we didn't get an instance, instantiate a new one
             self.instance = opts.model()
             object_data = {}
@@ -247,6 +252,10 @@ class BaseModelForm(BaseForm):
         # if initial was provided, it should override the values from instance
         if initial is not None:
             object_data.update(initial)
+        # self._validate_unique will be set to True by BaseModelForm.clean().
+        # It is False by default so overriding self.clean() and failing to call
+        # super will stop validate_unique from being called.
+        self._validate_unique = False
         super(BaseModelForm, self).__init__(data, files, auto_id, prefix, object_data,
                                             error_class, label_suffix, empty_permitted)
 
@@ -276,49 +285,70 @@ class BaseModelForm(BaseForm):
             # adding these values to the model after form validation.
             if field not in self.fields:
                 exclude.append(f.name)
+
+            # Don't perform model validation on fields that were defined
+            # manually on the form and excluded via the ModelForm's Meta
+            # class. See #12901.
+            elif self._meta.fields and field not in self._meta.fields:
+                exclude.append(f.name)
+            elif self._meta.exclude and field in self._meta.exclude:
+                exclude.append(f.name)
+
             # Exclude fields that failed form validation. There's no need for
             # the model fields to validate them as well.
             elif field in self._errors.keys():
                 exclude.append(f.name)
-            # Exclude empty fields that are not required by the form. The
-            # underlying model field may be required, so this keeps the model
-            # field from raising that error.
+
+            # Exclude empty fields that are not required by the form, if the
+            # underlying model field is required. This keeps the model field
+            # from raising a required error. Note: don't exclude the field from
+            # validaton if the model field allows blanks. If it does, the blank
+            # value may be included in a unique check, so cannot be excluded
+            # from validation.
             else:
                 form_field = self.fields[field]
                 field_value = self.cleaned_data.get(field, None)
-                if field_value is None and not form_field.required:
+                if not f.blank and not form_field.required and field_value in EMPTY_VALUES:
                     exclude.append(f.name)
         return exclude
 
     def clean(self):
-        self.validate_unique()
+        self._validate_unique = True
         return self.cleaned_data
 
-    def _clean_fields(self):
-        """
-        Cleans the form fields, constructs the instance, then cleans the model
-        fields.
-        """
-        super(BaseModelForm, self)._clean_fields()
+    def _post_clean(self):
         opts = self._meta
+        # Update the model instance with self.cleaned_data.
         self.instance = construct_instance(self, self.instance, opts.fields, opts.exclude)
+
         exclude = self._get_validation_exclusions()
+
+        # Foreign Keys being used to represent inline relationships
+        # are excluded from basic field value validation. This is for two
+        # reasons: firstly, the value may not be supplied (#12507; the
+        # case of providing new values to the admin); secondly the
+        # object being referred to may not yet fully exist (#12749).
+        # However, these fields *must* be included in uniqueness checks,
+        # so this can't be part of _get_validation_exclusions().
+        for f_name, field in self.fields.items():
+            if isinstance(field, InlineForeignKeyField):
+                exclude.append(f_name)
+
+        # Clean the model instance's fields.
         try:
             self.instance.clean_fields(exclude=exclude)
         except ValidationError, e:
             self._update_errors(e.message_dict)
 
-    def _clean_form(self):
-        """
-        Runs the instance's clean method, then the form's. This is becuase the
-        form will run validate_unique() by default, and we should run the
-        model's clean method first.
-        """
+        # Call the model instance's clean method.
         try:
             self.instance.clean()
         except ValidationError, e:
             self._update_errors({NON_FIELD_ERRORS: e.messages})
-        super(BaseModelForm, self)._clean_form()
+
+        # Validate uniqueness if needed.
+        if self._validate_unique:
+            self.validate_unique()
 
     def validate_unique(self):
         """
@@ -352,7 +382,7 @@ class ModelForm(BaseModelForm):
     __metaclass__ = ModelFormMetaclass
 
 def modelform_factory(model, form=ModelForm, fields=None, exclude=None,
-                       formfield_callback=lambda f: f.formfield()):
+                       formfield_callback=None):
     # Create the inner Meta class. FIXME: ideally, we should be able to
     # construct a ModelForm without creating and passing in a temporary
     # inner class.
@@ -436,10 +466,10 @@ class BaseModelFormSet(BaseFormSet):
             if not qs.ordered:
                 qs = qs.order_by(self.model._meta.pk.name)
 
-            if self.max_num > 0:
-                self._queryset = qs[:self.max_num]
-            else:
-                self._queryset = qs
+            # Removed queryset limiting here. As per discussion re: #13023
+            # on django-dev, max_num should not prevent existing
+            # related objects/inlines from being displayed.
+            self._queryset = qs
         return self._queryset
 
     def save_new(self, form, commit=True):
@@ -479,7 +509,7 @@ class BaseModelFormSet(BaseFormSet):
 
         errors = []
         # Do each of the unique checks (unique and unique_together)
-        for unique_check in all_unique_checks:
+        for uclass, unique_check in all_unique_checks:
             seen_data = set()
             for form in self.forms:
                 # if the form doesn't have cleaned_data then we ignore it,
@@ -503,7 +533,7 @@ class BaseModelFormSet(BaseFormSet):
         # iterate over each of the date checks now
         for date_check in all_date_checks:
             seen_data = set()
-            lookup, field, unique_for = date_check
+            uclass, lookup, field, unique_for = date_check
             for form in self.forms:
                 # if the form doesn't have cleaned_data then we ignore it,
                 # it's already invalid
@@ -547,9 +577,9 @@ class BaseModelFormSet(BaseFormSet):
     def get_date_error_message(self, date_check):
         return ugettext("Please correct the duplicate data for %(field_name)s "
             "which must be unique for the %(lookup)s in %(date_field)s.") % {
-            'field_name': date_check[1],
-            'date_field': date_check[2],
-            'lookup': unicode(date_check[0]),
+            'field_name': date_check[2],
+            'date_field': date_check[3],
+            'lookup': unicode(date_check[1]),
         }
 
     def get_form_error(self):
@@ -634,10 +664,10 @@ class BaseModelFormSet(BaseFormSet):
             form.fields[self._pk_field.name] = ModelChoiceField(qs, initial=pk_value, required=False, widget=HiddenInput)
         super(BaseModelFormSet, self).add_fields(form, index)
 
-def modelformset_factory(model, form=ModelForm, formfield_callback=lambda f: f.formfield(),
+def modelformset_factory(model, form=ModelForm, formfield_callback=None,
                          formset=BaseModelFormSet,
                          extra=1, can_delete=False, can_order=False,
-                         max_num=0, fields=None, exclude=None):
+                         max_num=None, fields=None, exclude=None):
     """
     Returns a FormSet class for the given Django model class.
     """
@@ -700,7 +730,7 @@ class BaseInlineFormSet(BaseModelFormSet):
     #@classmethod
     def get_default_prefix(cls):
         from django.db.models.fields.related import RelatedObject
-        return RelatedObject(cls.fk.rel.to, cls.model, cls.fk).get_accessor_name()
+        return RelatedObject(cls.fk.rel.to, cls.model, cls.fk).get_accessor_name().replace('+','')
     get_default_prefix = classmethod(get_default_prefix)
 
     def save_new(self, form, commit=True):
@@ -719,20 +749,31 @@ class BaseInlineFormSet(BaseModelFormSet):
     def add_fields(self, form, index):
         super(BaseInlineFormSet, self).add_fields(form, index)
         if self._pk_field == self.fk:
-            form.fields[self._pk_field.name] = InlineForeignKeyField(self.instance, pk_field=True)
+            name = self._pk_field.name
+            kwargs = {'pk_field': True}
         else:
             # The foreign key field might not be on the form, so we poke at the
             # Model field to get the label, since we need that for error messages.
+            name = self.fk.name
             kwargs = {
-                'label': getattr(form.fields.get(self.fk.name), 'label', capfirst(self.fk.verbose_name))
+                'label': getattr(form.fields.get(name), 'label', capfirst(self.fk.verbose_name))
             }
             if self.fk.rel.field_name != self.fk.rel.to._meta.pk.name:
                 kwargs['to_field'] = self.fk.rel.field_name
-            form.fields[self.fk.name] = InlineForeignKeyField(self.instance, **kwargs)
+
+        form.fields[name] = InlineForeignKeyField(self.instance, **kwargs)
+
+        # Add the generated field to form._meta.fields if it's defined to make
+        # sure validation isn't skipped on that field.
+        if form._meta.fields:
+            if isinstance(form._meta.fields, tuple):
+                form._meta.fields = list(form._meta.fields)
+            form._meta.fields.append(self.fk.name)
 
     def get_unique_error_message(self, unique_check):
         unique_check = [field for field in unique_check if field != self.fk.name]
         return super(BaseInlineFormSet, self).get_unique_error_message(unique_check)
+
 
 def _get_foreign_key(parent_model, model, fk_name=None, can_fail=False):
     """
@@ -777,8 +818,8 @@ def _get_foreign_key(parent_model, model, fk_name=None, can_fail=False):
 def inlineformset_factory(parent_model, model, form=ModelForm,
                           formset=BaseInlineFormSet, fk_name=None,
                           fields=None, exclude=None,
-                          extra=3, can_order=False, can_delete=True, max_num=0,
-                          formfield_callback=lambda f: f.formfield()):
+                          extra=3, can_order=False, can_delete=True, max_num=None,
+                          formfield_callback=None):
     """
     Returns an ``InlineFormSet`` for the given kwargs.
 
@@ -871,12 +912,7 @@ class ModelChoiceIterator(object):
         return len(self.queryset)
 
     def choice(self, obj):
-        if self.field.to_field_name:
-            key = obj.serializable_value(self.field.to_field_name)
-        else:
-            key = obj.pk
-        return (key, self.field.label_from_instance(obj))
-
+        return (self.field.prepare_value(obj), self.field.label_from_instance(obj))
 
 class ModelChoiceField(ChoiceField):
     """A ChoiceField whose choices are a model QuerySet."""
@@ -904,6 +940,12 @@ class ModelChoiceField(ChoiceField):
         self.choice_cache = None
         self.to_field_name = to_field_name
 
+    def __deepcopy__(self, memo):
+        result = super(ChoiceField, self).__deepcopy__(memo)
+        # Need to force a new ModelChoiceIterator to be created, bug #11183
+        result.queryset = result.queryset
+        return result
+
     def _get_queryset(self):
         return self._queryset
 
@@ -930,8 +972,8 @@ class ModelChoiceField(ChoiceField):
             return self._choices
 
         # Otherwise, execute the QuerySet in self.queryset to determine the
-        # choices dynamically. Return a fresh QuerySetIterator that has not been
-        # consumed. Note that we're instantiating a new QuerySetIterator *each*
+        # choices dynamically. Return a fresh ModelChoiceIterator that has not been
+        # consumed. Note that we're instantiating a new ModelChoiceIterator *each*
         # time _get_choices() is called (and, thus, each time self.choices is
         # accessed) so that we can ensure the QuerySet has not been consumed. This
         # construct might look complicated but it allows for lazy evaluation of
@@ -939,6 +981,14 @@ class ModelChoiceField(ChoiceField):
         return ModelChoiceIterator(self)
 
     choices = property(_get_choices, ChoiceField._set_choices)
+
+    def prepare_value(self, value):
+        if hasattr(value, '_meta'):
+            if self.to_field_name:
+                return value.serializable_value(self.to_field_name)
+            else:
+                return value.pk
+        return super(ModelChoiceField, self).prepare_value(value)
 
     def to_python(self, value):
         if value in EMPTY_VALUES:
@@ -989,3 +1039,8 @@ class ModelMultipleChoiceField(ModelChoiceField):
             if force_unicode(val) not in pks:
                 raise ValidationError(self.error_messages['invalid_choice'] % val)
         return qs
+
+    def prepare_value(self, value):
+        if hasattr(value, '__iter__'):
+            return [super(ModelMultipleChoiceField, self).prepare_value(v) for v in value]
+        return super(ModelMultipleChoiceField, self).prepare_value(value)

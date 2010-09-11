@@ -1,10 +1,10 @@
-.. _ref-validators:
-
 ==========
 Validators
 ==========
 
 .. versionadded:: 1.2
+.. module:: django.core.validators
+    :synopsis: Validation utilities and base classes
 
 Writing validators
 ==================
@@ -16,7 +16,7 @@ for re-using validation logic between different types of fields.
 For example, here's a validator that only allows even numbers::
 
     from django.core.exceptions import ValidationError
-    
+
     def validate_even(value):
         if value % 2 != 0:
             raise ValidationError(u'%s is not an even number' % value)
@@ -40,12 +40,12 @@ use the same validator with forms::
 How validators are run
 ======================
 
-See the :ref:`form validation <ref-forms-validation>` for more information on
+See the :doc:`form validation </ref/forms/validation>` for more information on
 how validators are run in forms, and :ref:`Validating objects
 <validating-objects>` for how they're run in models. Note that validators will
 not be run automatically when you save a model, but if you are using a
 ``ModelForm``, it will run your validators on any fields that are included in
-your form. See the :ref:`ModelForm documentation <topics-forms-modelforms>`
+your form. See the :doc:`ModelForm documentation </topics/forms/modelforms>`
 for information on how model validation interacts with forms.
 
 Built-in validators
@@ -59,20 +59,23 @@ methods.
 ``RegexValidator``
 ------------------
 
-.. class:: RegexValidator(regex=None, message=None, code=None)
+.. class:: RegexValidator(regex, message=None, code=None)
 
-.. attribute:: regex=None
+.. attribute:: regex
 
-The regular expression to search for the provided ``value``. Raises a
-``ValidationError`` if no match was found.
-
-.. attribute:: code='invalid'
-
-The error code to use if validation fails. Defaults to ``'invalid'``.
+The regular expression pattern to search for the provided ``value``,
+or a pre-compiled regular expression. Raises a ``ValidationError``
+with ``message`` and ``code`` if no match is found.
 
 .. attribute:: message=None
 
-The error message to use if ``regex`` doesn't match the provided ``value``.
+The error message used by ``ValidationError`` if validation fails. If no
+``message`` is specified, a generic ``"Enter a valid value"`` message is used.
+
+.. attribute:: code=None
+
+The error code used by ``ValidationError`` if validation fails. If ``code``
+is not specified, ``"invalid"`` is used.
 
 ``URLValidator``
 ----------------

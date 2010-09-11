@@ -76,7 +76,7 @@ class UnicodeCursorWrapper(object):
             return getattr(self.cursor, attr)
 
     def __iter__(self):
-        return iter(self.cursor)
+        return iter(self.cursor.fetchall())
 
 class DatabaseFeatures(BaseDatabaseFeatures):
     uses_savepoints = True
@@ -102,6 +102,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     def __init__(self, *args, **kwargs):
         super(DatabaseWrapper, self).__init__(*args, **kwargs)
 
+        import warnings
+        warnings.warn(
+            'The "postgresql" backend has been deprecated. Use "postgresql_psycopg2" instead.',
+            PendingDeprecationWarning
+        )
+
         self.features = DatabaseFeatures()
         self.ops = DatabaseOperations(self)
         self.client = DatabaseClient(self)
@@ -110,10 +116,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         self.validation = BaseDatabaseValidation(self)
 
     def _cursor(self):
+        new_connection = False
         set_tz = False
         settings_dict = self.settings_dict
         if self.connection is None:
-            set_tz = True
+            new_connection = True
+            set_tz = settings_dict.get('TIME_ZONE')
             if settings_dict['NAME'] == '':
                 from django.core.exceptions import ImproperlyConfigured
                 raise ImproperlyConfigured("You need to specify NAME in your Django settings file.")
@@ -127,19 +135,20 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             if settings_dict['PORT']:
                 conn_string += " port=%s" % settings_dict['PORT']
             self.connection = Database.connect(conn_string, **settings_dict['OPTIONS'])
-            self.connection.set_isolation_level(1) # make transactions transparent to all cursors
-            connection_created.send(sender=self.__class__)
+            # make transactions transparent to all cursors
+            self.connection.set_isolation_level(1)
+            connection_created.send(sender=self.__class__, connection=self)
         cursor = self.connection.cursor()
-        if set_tz:
-            cursor.execute("SET TIME ZONE %s", [settings_dict['TIME_ZONE']])
+        if new_connection:
+            if set_tz:
+                cursor.execute("SET TIME ZONE %s", [settings_dict['TIME_ZONE']])
             if not hasattr(self, '_version'):
                 self.__class__._version = get_version(cursor)
             if self._version[0:2] < (8, 0):
                 # No savepoint support for earlier version of PostgreSQL.
                 self.features.uses_savepoints = False
-        cursor.execute("SET client_encoding to 'UNICODE'")
-        cursor = UnicodeCursorWrapper(cursor, 'utf-8')
-        return cursor
+            cursor.execute("SET client_encoding to 'UNICODE'")
+        return UnicodeCursorWrapper(cursor, 'utf-8')
 
 def typecast_string(s):
     """

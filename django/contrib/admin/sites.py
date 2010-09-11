@@ -14,10 +14,6 @@ from django.utils.text import capfirst
 from django.utils.translation import ugettext_lazy, ugettext as _
 from django.views.decorators.cache import never_cache
 from django.conf import settings
-try:
-    set
-except NameError:
-    from sets import Set as set     # Python 2.3 fallback
 
 ERROR_MESSAGE = ugettext_lazy("Please enter a correct username and password. Note that both fields are case-sensitive.")
 LOGIN_FORM_KEY = 'this_is_the_login_form'
@@ -155,11 +151,15 @@ class AdminSite(object):
         from django.contrib.contenttypes.models import ContentType
 
         if not LogEntry._meta.installed:
-            raise ImproperlyConfigured("Put 'django.contrib.admin' in your INSTALLED_APPS setting in order to use the admin application.")
+            raise ImproperlyConfigured("Put 'django.contrib.admin' in your "
+                "INSTALLED_APPS setting in order to use the admin application.")
         if not ContentType._meta.installed:
-            raise ImproperlyConfigured("Put 'django.contrib.contenttypes' in your INSTALLED_APPS setting in order to use the admin application.")
-        if 'django.core.context_processors.auth' not in settings.TEMPLATE_CONTEXT_PROCESSORS:
-            raise ImproperlyConfigured("Put 'django.core.context_processors.auth' in your TEMPLATE_CONTEXT_PROCESSORS setting in order to use the admin application.")
+            raise ImproperlyConfigured("Put 'django.contrib.contenttypes' in "
+                "your INSTALLED_APPS setting in order to use the admin application.")
+        if not ('django.contrib.auth.context_processors.auth' in settings.TEMPLATE_CONTEXT_PROCESSORS or
+            'django.core.context_processors.auth' in settings.TEMPLATE_CONTEXT_PROCESSORS):
+            raise ImproperlyConfigured("Put 'django.contrib.auth.context_processors.auth' "
+                "in your TEMPLATE_CONTEXT_PROCESSORS setting in order to use the admin application.")
 
     def admin_view(self, view, cacheable=False):
         """
@@ -192,7 +192,8 @@ class AdminSite(object):
             inner = never_cache(inner)
         # We add csrf_protect here so this function can be used as a utility
         # function for any view, without having to repeat 'csrf_protect'.
-        inner = csrf_protect(inner)
+        if not getattr(view, 'csrf_exempt', False):
+            inner = csrf_protect(inner)
         return update_wrapper(inner, view)
 
     def get_urls(self):
@@ -378,11 +379,11 @@ class AdminSite(object):
 
         # Sort the apps alphabetically.
         app_list = app_dict.values()
-        app_list.sort(lambda x, y: cmp(x['name'], y['name']))
+        app_list.sort(key=lambda x: x['name'])
 
         # Sort the models alphabetically within each app.
         for app in app_list:
-            app['models'].sort(lambda x, y: cmp(x['name'], y['name']))
+            app['models'].sort(key=lambda x: x['name'])
 
         context = {
             'title': _('Site administration'),
@@ -442,7 +443,7 @@ class AdminSite(object):
         if not app_dict:
             raise http.Http404('The requested admin page does not exist.')
         # Sort the models alphabetically within each app.
-        app_dict['models'].sort(lambda x, y: cmp(x['name'], y['name']))
+        app_dict['models'].sort(key=lambda x: x['name'])
         context = {
             'title': _('%s administration') % capfirst(app_label),
             'app_list': [app_dict],

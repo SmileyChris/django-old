@@ -1,15 +1,13 @@
-.. _topics-db-queries:
-
 ==============
 Making queries
 ==============
 
 .. currentmodule:: django.db.models
 
-Once you've created your :ref:`data models <topics-db-models>`, Django
+Once you've created your :doc:`data models </topics/db/models>`, Django
 automatically gives you a database-abstraction API that lets you create,
 retrieve, update and delete objects. This document explains how to use this
-API. Refer to the :ref:`data model reference <ref-models-index>` for full
+API. Refer to the :doc:`data model reference </ref/models/index>` for full
 details of all the various model lookup options.
 
 Throughout this guide (and in the reference), we'll refer to the following
@@ -419,7 +417,7 @@ models doesn't have a value that meets the filter condition, Django will treat
 it as if there is an empty (all values are ``NULL``), but valid, object there.
 All this means is that no error will be raised. For example, in this filter::
 
-    Blog.objects.filter(entry__author__name='Lennon')
+    Blog.objects.filter(entry__authors__name='Lennon')
 
 (if there was a related ``Author`` model), if there was no ``author``
 associated with an entry, it would be treated as if there was also no ``name``
@@ -427,14 +425,14 @@ attached, rather than raising an error because of the missing ``author``.
 Usually this is exactly what you want to have happen. The only case where it
 might be confusing is if you are using ``isnull``. Thus::
 
-    Blog.objects.filter(entry__author__name__isnull=True)
+    Blog.objects.filter(entry__authors__name__isnull=True)
 
 will return ``Blog`` objects that have an empty ``name`` on the ``author`` and
 also those which have an empty ``author`` on the ``entry``. If you don't want
 those latter objects, you could write::
 
-    Blog.objects.filter(entry__author__isnull=False,
-            entry__author__name__isnull=True)
+    Blog.objects.filter(entry__authors__isnull=False,
+            entry__authors__name__isnull=True)
 
 Spanning multi-valued relationships
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -442,7 +440,7 @@ Spanning multi-valued relationships
 .. versionadded:: 1.0
 
 When you are filtering an object based on a ``ManyToManyField`` or a reverse
-``ForeignKeyField``, there are two different sorts of filter you may be
+``ForeignKey``, there are two different sorts of filter you may be
 interested in. Consider the ``Blog``/``Entry`` relationship (``Blog`` to
 ``Entry`` is a one-to-many relation). We might be interested in finding blogs
 that have an entry which has both *"Lennon"* in the headline and was published
@@ -512,17 +510,18 @@ than pingbacks, we construct an ``F()`` object to reference the comment count,
 and use that ``F()`` object in the query::
 
     >>> from django.db.models import F
-    >>> Entry.objects.filter(n_pingbacks__lt=F('n_comments'))
+    >>> Entry.objects.filter(n_comments__gt=F('n_pingbacks'))
 
 Django supports the use of addition, subtraction, multiplication,
 division and modulo arithmetic with ``F()`` objects, both with constants
-and with other ``F()`` objects. To find all the blog entries with *twice* as
-many comments as pingbacks, we modify the query::
+and with other ``F()`` objects. To find all the blog entries with more than
+*twice* as many comments as pingbacks, we modify the query::
 
-    >>> Entry.objects.filter(n_pingbacks__lt=F('n_comments') * 2)
+    >>> Entry.objects.filter(n_comments__gt=F('n_pingbacks') * 2)
 
-To find all the entries where the sum of the pingback count and comment count
-is greater than the rating of the entry, we would issue the query::
+To find all the entries where the rating of the entry is less than the
+sum of the pingback count and comment count, we would issue the
+query::
 
     >>> Entry.objects.filter(rating__lt=F('n_comments') + F('n_pingbacks'))
 
@@ -532,7 +531,7 @@ any joins needed to access the related object. For example, to retrieve all
 the entries where the author's name is the same as the blog name, we could
 issue the query:
 
-    >>> Entry.objects.filter(author__name=F('blog__name'))
+    >>> Entry.objects.filter(authors__name=F('blog__name'))
 
 The pk lookup shortcut
 ----------------------
@@ -778,7 +777,7 @@ a ``QuerySet``. You can do this with the ``update()`` method. For example::
 You can only set non-relation fields and ``ForeignKey`` fields using this
 method. To update a non-relation field, provide the new value as a constant.
 To update ``ForeignKey`` fields, set the new value to be the new model
-instance you want to point to. Example::
+instance you want to point to. For example::
 
     >>> b = Blog.objects.get(pk=1)
 
@@ -788,8 +787,13 @@ instance you want to point to. Example::
 The ``update()`` method is applied instantly and returns the number of rows
 affected by the query. The only restriction on the ``QuerySet`` that is
 updated is that it can only access one database table, the model's main
-table. So don't try to filter based on related fields or anything like that;
-it won't work.
+table. You can filter based on related fields, but you can only update columns
+in the model's main table. Example::
+
+    >>> b = Blog.objects.get(pk=1)
+
+    # Update all the headlines belonging to this Blog.
+    >>> Entry.objects.select_related().filter(blog=b).update(headline='Everything is the same')
 
 Be aware that the ``update()`` method is converted directly to an SQL
 statement. It is a bulk operation for direct updates. It doesn't run any
@@ -931,7 +935,7 @@ be accessed from an instance::
 In addition to the ``QuerySet`` methods defined in "Retrieving objects" above,
 the ``ForeignKey`` ``Manager`` has additional methods used to handle the set of
 related objects. A synopsis of each is below, and complete details can be found
-in the :ref:`related objects reference <ref-models-relations>`.
+in the :doc:`related objects reference </ref/models/relations>`.
 
 ``add(obj1, obj2, ...)``
     Adds the specified model objects to the related object set.
@@ -1061,7 +1065,7 @@ Falling back to raw SQL
 If you find yourself needing to write an SQL query that is too complex for
 Django's database-mapper to handle, you can fall back on writing SQL by hand.
 Django has a couple of options for writing raw SQL queries; see
-:ref:`topics-db-sql`.
+:doc:`/topics/db/sql`.
 
 Finally, it's important to note that the Django database layer is merely an
 interface to your database. You can access your database via other tools,

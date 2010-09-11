@@ -1,5 +1,3 @@
-.. _topics-http-sessions:
-
 ===================
 How to use sessions
 ===================
@@ -15,7 +13,7 @@ Cookies contain a session ID -- not the data itself.
 Enabling sessions
 =================
 
-Sessions are implemented via a piece of :ref:`middleware <ref-middleware>`.
+Sessions are implemented via a piece of :doc:`middleware </ref/middleware>`.
 
 To enable session functionality, do the following:
 
@@ -44,15 +42,8 @@ Using database-backed sessions
 If you want to use a database-backed session, you need to add
 ``'django.contrib.sessions'`` to your ``INSTALLED_APPS`` setting.
 
-If you want to store your session data on a database other than ``default``
-alias, you should set the :setting:`SESSION_DB_ALIAS` setting.
-
 Once you have configured your installation, run ``manage.py syncdb``
 to install the single database table that stores session data.
-
-.. versionadded:: 1.2
-   The :setting:`SESSION_DB_ALIAS` setting was added in Django 1.2. It
-   is not required in earlier versions.
 
 Using cached sessions
 ---------------------
@@ -63,8 +54,8 @@ For better performance, you may want to use a cache-based session backend.
    Django 1.0 did not include the ``cached_db`` session backend.
 
 To store session data using Django's cache system, you'll first need to make
-sure you've configured your cache; see the :ref:`cache documentation
-<topics-cache>` for details.
+sure you've configured your cache; see the :doc:`cache documentation
+</topics/cache>` for details.
 
 .. warning::
 
@@ -200,6 +191,10 @@ It also has these methods:
 
             * If ``value`` is ``None``, the session reverts to using the global
               session expiry policy.
+
+      Reading a session is not considered activity for expiration
+      purposes. Session expiration is computed from the last time the
+      session was *modified*.
 
     * ``get_expiry_age()``
 
@@ -415,12 +410,15 @@ in the past -- but your application may have different requirements.
 Settings
 ========
 
-A few :ref:`Django settings <ref-settings>` give you control over session behavior:
+A few :doc:`Django settings </ref/settings>` give you control over session behavior:
 
 SESSION_ENGINE
 --------------
 
 .. versionadded:: 1.0
+
+.. versionchanged:: 1.1
+   The ``cached_db`` backend was added
 
 Default: ``django.contrib.sessions.backends.db``
 
@@ -429,6 +427,7 @@ Controls where Django stores session data. Valid values are:
     * ``'django.contrib.sessions.backends.db'``
     * ``'django.contrib.sessions.backends.file'``
     * ``'django.contrib.sessions.backends.cache'``
+    * ``'django.contrib.sessions.backends.cached_db'``
 
 See `configuring the session engine`_ for more details.
 

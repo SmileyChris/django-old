@@ -5,12 +5,6 @@ import unittest
 
 import django.contrib as contrib
 
-try:
-    set
-except NameError:
-    from sets import Set as set     # For Python 2.3
-
-
 CONTRIB_DIR_NAME = 'django.contrib'
 MODEL_TESTS_DIR_NAME = 'modeltests'
 REGRESSION_TESTS_DIR_NAME = 'regressiontests'
@@ -20,6 +14,8 @@ TEST_TEMPLATE_DIR = 'templates'
 CONTRIB_DIR = os.path.dirname(contrib.__file__)
 MODEL_TEST_DIR = os.path.join(os.path.dirname(__file__), MODEL_TESTS_DIR_NAME)
 REGRESSION_TEST_DIR = os.path.join(os.path.dirname(__file__), REGRESSION_TESTS_DIR_NAME)
+
+REGRESSION_SUBDIRS_TO_SKIP = ['locale']
 
 ALWAYS_INSTALLED_APPS = [
     'django.contrib.contenttypes',
@@ -31,13 +27,16 @@ ALWAYS_INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.comments',
     'django.contrib.admin',
+    'django.contrib.admindocs',
 ]
 
 def get_test_models():
     models = []
     for loc, dirpath in (MODEL_TESTS_DIR_NAME, MODEL_TEST_DIR), (REGRESSION_TESTS_DIR_NAME, REGRESSION_TEST_DIR), (CONTRIB_DIR_NAME, CONTRIB_DIR):
         for f in os.listdir(dirpath):
-            if f.startswith('__init__') or f.startswith('.') or f.startswith('sql') or f.startswith('invalid'):
+            if f.startswith('__init__') or f.startswith('.') or \
+               f.startswith('sql') or f.startswith('invalid') or \
+               os.path.basename(f) in REGRESSION_SUBDIRS_TO_SKIP:
                 continue
             models.append((loc, f))
     return models
@@ -123,22 +122,19 @@ def django_tests(verbosity, interactive, failfast, test_labels):
     get_apps()
 
     # Load all the test model apps.
+    test_labels_set = set([label.split('.')[0] for label in test_labels])
     for model_dir, model_name in get_test_models():
         model_label = '.'.join([model_dir, model_name])
-        try:
-            # if the model was named on the command line, or
-            # no models were named (i.e., run all), import
-            # this model and add it to the list to test.
-            if not test_labels or model_name in set([label.split('.')[0] for label in test_labels]):
-                if verbosity >= 1:
-                    print "Importing model %s" % model_name
-                mod = load_app(model_label)
-                if mod:
-                    if model_label not in settings.INSTALLED_APPS:
-                        settings.INSTALLED_APPS.append(model_label)
-        except Exception, e:
-            sys.stderr.write("Error while importing %s:" % model_name + ''.join(traceback.format_exception(*sys.exc_info())[1:]))
-            continue
+        # if the model was named on the command line, or
+        # no models were named (i.e., run all), import
+        # this model and add it to the list to test.
+        if not test_labels or model_name in test_labels_set:
+            if verbosity >= 2:
+                print "Importing model %s" % model_name
+            mod = load_app(model_label)
+            if mod:
+                if model_label not in settings.INSTALLED_APPS:
+                    settings.INSTALLED_APPS.append(model_label)
 
     # Add tests for invalid models.
     extra_tests = []
@@ -189,8 +185,8 @@ if __name__ == "__main__":
     from optparse import OptionParser
     usage = "%prog [options] [model model model ...]"
     parser = OptionParser(usage=usage)
-    parser.add_option('-v','--verbosity', action='store', dest='verbosity', default='0',
-        type='choice', choices=['0', '1', '2'],
+    parser.add_option('-v','--verbosity', action='store', dest='verbosity', default='1',
+        type='choice', choices=['0', '1', '2', '3'],
         help='Verbosity level; 0=minimal output, 1=normal output, 2=all output')
     parser.add_option('--noinput', action='store_false', dest='interactive', default=True,
         help='Tells Django to NOT prompt the user for input of any kind.')

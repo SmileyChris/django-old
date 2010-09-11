@@ -1,24 +1,20 @@
 """Default variable filters."""
 
 import re
-
-try:
-    from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-except ImportError:
-    from django.utils._decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import random as random_module
 try:
     from functools import wraps
 except ImportError:
-    from django.utils.functional import wraps  # Python 2.3, 2.4 fallback.
+    from django.utils.functional import wraps  # Python 2.4 fallback.
 
 from django.template import Variable, Library
 from django.conf import settings
 from django.utils import formats
-from django.utils.translation import ugettext, ungettext
 from django.utils.encoding import force_unicode, iri_to_uri
+from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe, SafeData
+from django.utils.translation import ugettext, ungettext
 
 register = Library()
 
@@ -69,22 +65,22 @@ capfirst.is_safe=True
 capfirst = stringfilter(capfirst)
 
 _base_js_escapes = (
-    ('\\', r'\x5C'),
-    ('\'', r'\x27'),
-    ('"', r'\x22'),
-    ('>', r'\x3E'),
-    ('<', r'\x3C'),
-    ('&', r'\x26'),
-    ('=', r'\x3D'),
-    ('-', r'\x2D'),
-    (';', r'\x3B'),
+    ('\\', r'\u005C'),
+    ('\'', r'\u0027'),
+    ('"', r'\u0022'),
+    ('>', r'\u003E'),
+    ('<', r'\u003C'),
+    ('&', r'\u0026'),
+    ('=', r'\u003D'),
+    ('-', r'\u002D'),
+    (';', r'\u003B'),
     (u'\u2028', r'\u2028'),
     (u'\u2029', r'\u2029')
 )
 
 # Escape every ASCII character with a value less than 32.
 _js_escapes = (_base_js_escapes +
-               tuple([('%c' % z, '\\x%02X' % z) for z in range(32)]))
+               tuple([('%c' % z, '\\u%04X' % z) for z in range(32)]))
 
 def escapejs(value):
     """Hex encodes characters for use in JavaScript strings."""
@@ -260,6 +256,8 @@ def truncatewords(value, arg):
     Truncates a string after a certain number of words.
 
     Argument: Number of words to truncate after.
+
+    Newlines within the string are removed.
     """
     from django.utils.text import truncate_words
     try:
@@ -275,6 +273,8 @@ def truncatewords_html(value, arg):
     Truncates HTML after a certain number of words.
 
     Argument: Number of words to truncate after.
+
+    Newlines in the HTML are preserved.
     """
     from django.utils.text import truncate_html_words
     try:
@@ -501,10 +501,9 @@ def join(value, arg, autoescape=None):
     """
     value = map(force_unicode, value)
     if autoescape:
-        from django.utils.html import conditional_escape
         value = [conditional_escape(v) for v in value]
     try:
-        data = arg.join(value)
+        data = conditional_escape(arg).join(value)
     except AttributeError: # fail silently but nicely
         return value
     return mark_safe(data)
@@ -651,7 +650,13 @@ unordered_list.needs_autoescape = True
 
 def add(value, arg):
     """Adds the arg to the value."""
-    return int(value) + int(arg)
+    try:
+        return int(value) + int(arg)
+    except (ValueError, TypeError):
+        try:
+            return value + arg
+        except:
+            return value
 add.is_safe = False
 
 def get_digit(value, arg):
@@ -808,7 +813,11 @@ def filesizeformat(bytes):
         return ugettext("%.1f KB") % (bytes / 1024)
     if bytes < 1024 * 1024 * 1024:
         return ugettext("%.1f MB") % (bytes / (1024 * 1024))
-    return ugettext("%.1f GB") % (bytes / (1024 * 1024 * 1024))
+    if bytes < 1024 * 1024 * 1024 * 1024:
+        return ugettext("%.1f GB") % (bytes / (1024 * 1024 * 1024))
+    if bytes < 1024 * 1024 * 1024 * 1024 * 1024:
+        return ugettext("%.1f TB") % (bytes / (1024 * 1024 * 1024 * 1024))
+    return ugettext("%.1f PB") % (bytes / (1024 * 1024 * 1024 * 1024 * 1024))
 filesizeformat.is_safe = True
 
 def pluralize(value, arg=u's'):

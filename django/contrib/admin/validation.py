@@ -170,11 +170,15 @@ def validate_inline(cls, parent, parent_model):
     fk = _get_foreign_key(parent_model, cls.model, fk_name=cls.fk_name, can_fail=True)
 
     # extra = 3
-    # max_num = 0
-    for attr in ('extra', 'max_num'):
-        if not isinstance(getattr(cls, attr), int):
-            raise ImproperlyConfigured("'%s.%s' should be a integer."
-                    % (cls.__name__, attr))
+    if not isinstance(getattr(cls, 'extra'), int):
+        raise ImproperlyConfigured("'%s.extra' should be a integer."
+                % cls.__name__)
+
+    # max_num = None
+    max_num = getattr(cls, 'max_num', None)
+    if max_num is not None and not isinstance(max_num, int):
+        raise ImproperlyConfigured("'%s.max_num' should be an integer or None (default)."
+                % cls.__name__)
 
     # formset
     if hasattr(cls, 'formset') and not issubclass(cls.formset, BaseModelFormSet):
@@ -245,6 +249,12 @@ def validate_base(cls, model):
                 if type(fields) != tuple:
                     fields = (fields,)
                 for field in fields:
+                    if field in cls.readonly_fields:
+                        # Stuff can be put in fields that isn't actually a
+                        # model field if it's in readonly_fields,
+                        # readonly_fields will handle the validation of such
+                        # things.
+                        continue
                     check_formfield(cls, model, opts, "fieldsets[%d][1]['fields']" % idx, field)
                     try:
                         f = opts.get_field(field)
@@ -261,6 +271,19 @@ def validate_base(cls, model):
         if len(flattened_fieldsets) > len(set(flattened_fieldsets)):
             raise ImproperlyConfigured('There are duplicate field(s) in %s.fieldsets' % cls.__name__)
 
+    # exclude
+    if cls.exclude: # default value is None
+        check_isseq(cls, 'exclude', cls.exclude)
+        for field in cls.exclude:
+            check_formfield(cls, model, opts, 'exclude', field)
+            try:
+                f = opts.get_field(field)
+            except models.FieldDoesNotExist:
+                # If we can't find a field on the model that matches,
+                # it could be an extra field on the form.
+                continue
+        if len(cls.exclude) > len(set(cls.exclude)):
+            raise ImproperlyConfigured('There are duplicate field(s) in %s.exclude' % cls.__name__)
 
     # form
     if hasattr(cls, 'form') and not issubclass(cls.form, BaseModelForm):

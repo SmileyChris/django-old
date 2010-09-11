@@ -2,6 +2,8 @@ import datetime
 import decimal
 import re
 import time
+import math
+from itertools import tee
 
 import django.utils.copycompat as copy
 
@@ -13,7 +15,6 @@ from django import forms
 from django.core import exceptions, validators
 from django.utils.datastructures import DictWrapper
 from django.utils.functional import curry
-from django.utils.itercompat import tee
 from django.utils.text import capfirst
 from django.utils.translation import ugettext_lazy as _
 from django.utils.encoding import smart_unicode, force_unicode, smart_str
@@ -118,34 +119,6 @@ class Field(object):
         messages.update(error_messages or {})
         self.error_messages = messages
 
-    def __getstate__(self):
-        """
-        Pickling support.
-        """
-        from django.utils.functional import Promise
-        obj_dict = self.__dict__.copy()
-        items = []
-        translated_keys = []
-        for k, v in self.error_messages.items():
-            if isinstance(v, Promise):
-                args = getattr(v, '_proxy____args', None)
-                if args:
-                    translated_keys.append(k)
-                    v = args[0]
-            items.append((k,v))
-        obj_dict['_translated_keys'] = translated_keys
-        obj_dict['error_messages'] = dict(items)
-        return obj_dict
-
-    def __setstate__(self, obj_dict):
-        """
-        Unpickling support.
-        """
-        translated_keys = obj_dict.pop('_translated_keys')
-        self.__dict__.update(obj_dict)
-        for k in translated_keys:
-            self.error_messages[k] = _(self.error_messages[k])
-
     def __cmp__(self, other):
         # This is needed because bisect does not take a comparison function.
         return cmp(self.creation_counter, other.creation_counter)
@@ -196,7 +169,7 @@ class Field(object):
             return
         if self._choices and value:
             for option_key, option_value in self.choices:
-                if type(option_value) in (tuple, list):
+                if isinstance(option_value, (list, tuple)):
                     # This is an optgroup, so look inside the group for options.
                     for optgroup_key, optgroup_value in option_value:
                         if value == optgroup_key:
@@ -260,6 +233,7 @@ class Field(object):
 
     def contribute_to_class(self, cls, name):
         self.set_attributes_from_name(name)
+        self.model = cls
         cls._meta.add_field(self)
         if self.choices:
             setattr(cls, 'get_%s_display' % self.name, curry(cls._get_FIELD_display, field=self))
@@ -404,7 +378,7 @@ class Field(object):
         return first_choice + list(self.flatchoices)
 
     def _get_val_from_obj(self, obj):
-        if obj:
+        if obj is not None:
             return getattr(obj, self.attname)
         else:
             return self.get_default()
@@ -431,7 +405,7 @@ class Field(object):
         """Flattened version of choices tuple."""
         flat = []
         for choice, value in self.choices:
-            if type(value) in (list, tuple):
+            if isinstance(value, (list, tuple)):
                 flat.extend(value)
             else:
                 flat.append((choice,value))
@@ -445,9 +419,11 @@ class Field(object):
         "Returns a django.forms.Field instance for this database Field."
         defaults = {'required': not self.blank, 'label': capfirst(self.verbose_name), 'help_text': self.help_text}
         if self.has_default():
-            defaults['initial'] = self.get_default()
             if callable(self.default):
+                defaults['initial'] = self.default
                 defaults['show_hidden_initial'] = True
+            else:
+                defaults['initial'] = self.get_default()
         if self.choices:
             # Fields with choices get special treatment.
             include_blank = self.blank or not (self.has_default() or 'initial' in kwargs)
@@ -462,7 +438,7 @@ class Field(object):
             for k in kwargs.keys():
                 if k not in ('coerce', 'empty_value', 'choices', 'required',
                              'widget', 'label', 'initial', 'help_text',
-                             'error_messages'):
+                             'error_messages', 'show_hidden_initial'):
                     del kwargs[k]
         defaults.update(kwargs)
         return form_class(**defaults)
@@ -482,6 +458,9 @@ class AutoField(Field):
         assert kwargs.get('primary_key', False) is True, "%ss must have primary_key=True." % self.__class__.__name__
         kwargs['blank'] = True
         Field.__init__(self, *args, **kwargs)
+
+    def get_internal_type(self):
+        return "AutoField"
 
     def to_python(self, value):
         if value is None:
@@ -524,9 +503,14 @@ class BooleanField(Field):
         return "BooleanField"
 
     def to_python(self, value):
-        if value in (True, False): return value
-        if value in ('t', 'True', '1'): return True
-        if value in ('f', 'False', '0'): return False
+        if value in (True, False):
+            # if value is 1 or 0 than it's equal to True or False, but we want
+            # to return a true bool for semantic reasons.
+            return bool(value)
+        if value in ('t', 'True', '1'):
+            return True
+        if value in ('f', 'False', '0'):
+            return False
         raise exceptions.ValidationError(self.error_messages['invalid'])
 
     def get_prep_lookup(self, lookup_type, value):
@@ -571,7 +555,7 @@ class CharField(Field):
 
     def get_prep_value(self, value):
         return self.to_python(value)
-    
+
     def formfield(self, **kwargs):
         # Passing max_length to forms.CharField means that the value's length
         # will be validated twice. This is considered acceptable since we want
@@ -814,6 +798,14 @@ class EmailField(CharField):
         kwargs['max_length'] = kwargs.get('max_length', 75)
         CharField.__init__(self, *args, **kwargs)
 
+    def formfield(self, **kwargs):
+        # As with CharField, this will cause email validation to be performed twice
+        defaults = {
+            'form_class': forms.EmailField,
+        }
+        defaults.update(kwargs)
+        return super(EmailField, self).formfield(**defaults)
+
 class FilePathField(Field):
     description = _("File path")
 
@@ -866,7 +858,7 @@ class FloatField(Field):
 class IntegerField(Field):
     empty_strings_allowed = False
     default_error_messages = {
-        'invalid': _("This value must be a float."),
+        'invalid': _("This value must be an integer."),
     }
     description = _("Integer")
 
@@ -874,6 +866,12 @@ class IntegerField(Field):
         if value is None:
             return None
         return int(value)
+
+    def get_prep_lookup(self, lookup_type, value):
+        if (lookup_type == 'gte' or lookup_type == 'lt') \
+           and isinstance(value, float):
+                value = math.ceil(value)
+        return super(IntegerField, self).get_prep_lookup(lookup_type, value)
 
     def get_internal_type(self):
         return "IntegerField"
@@ -928,16 +926,23 @@ class NullBooleanField(Field):
 
     def __init__(self, *args, **kwargs):
         kwargs['null'] = True
+        kwargs['blank'] = True
         Field.__init__(self, *args, **kwargs)
 
     def get_internal_type(self):
         return "NullBooleanField"
 
     def to_python(self, value):
-        if value in (None, True, False): return value
-        if value in ('None',): return None
-        if value in ('t', 'True', '1'): return True
-        if value in ('f', 'False', '0'): return False
+        if value is None:
+            return None
+        if value in (True, False):
+            return bool(value)
+        if value in ('None',):
+            return None
+        if value in ('t', 'True', '1'):
+            return True
+        if value in ('f', 'False', '0'):
+            return False
         raise exceptions.ValidationError(self.error_messages['invalid'])
 
     def get_prep_lookup(self, lookup_type, value):
@@ -1110,6 +1115,14 @@ class URLField(CharField):
         kwargs['max_length'] = kwargs.get('max_length', 200)
         CharField.__init__(self, verbose_name, name, **kwargs)
         self.validators.append(validators.URLValidator(verify_exists=verify_exists))
+
+    def formfield(self, **kwargs):
+        # As with CharField, this will cause URL validation to be performed twice
+        defaults = {
+            'form_class': forms.URLField,
+        }
+        defaults.update(kwargs)
+        return super(URLField, self).formfield(**defaults)
 
 class XMLField(TextField):
     description = _("XML text")

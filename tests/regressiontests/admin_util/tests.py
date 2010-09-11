@@ -1,16 +1,70 @@
 from datetime import datetime
 import unittest
 
+from django.conf import settings
 from django.db import models
+from django.utils.formats import localize
+from django.test import TestCase
 
 from django.contrib import admin
 from django.contrib.admin.util import display_for_field, label_for_field, lookup_field
 from django.contrib.admin.views.main import EMPTY_CHANGELIST_VALUE
 from django.contrib.sites.models import Site
-from django.utils.formats import localize
+from django.contrib.admin.util import NestedObjects
 
-from models import Article
+from models import Article, Count
 
+
+class NestedObjectsTests(TestCase):
+    """
+    Tests for ``NestedObject`` utility collection.
+
+    """
+    def setUp(self):
+        self.n = NestedObjects()
+        self.objs = [Count.objects.create(num=i) for i in range(5)]
+
+    def _check(self, target):
+        self.assertEquals(self.n.nested(lambda obj: obj.num), target)
+
+    def _add(self, obj, parent=None):
+        # don't bother providing the extra args that NestedObjects ignores
+        self.n.add(None, None, obj, None, parent)
+
+    def test_unrelated_roots(self):
+        self._add(self.objs[0])
+        self._add(self.objs[1])
+        self._add(self.objs[2], self.objs[1])
+
+        self._check([0, 1, [2]])
+
+    def test_siblings(self):
+        self._add(self.objs[0])
+        self._add(self.objs[1], self.objs[0])
+        self._add(self.objs[2], self.objs[0])
+
+        self._check([0, [1, 2]])
+
+    def test_duplicate_instances(self):
+        self._add(self.objs[0])
+        self._add(self.objs[1])
+        dupe = Count.objects.get(num=1)
+        self._add(dupe, self.objs[0])
+
+        self._check([0, 1])
+
+    def test_non_added_parent(self):
+        self._add(self.objs[0], self.objs[1])
+
+        self._check([0])
+
+    def test_cyclic(self):
+        self._add(self.objs[0], self.objs[2])
+        self._add(self.objs[1], self.objs[0])
+        self._add(self.objs[2], self.objs[1])
+        self._add(self.objs[0], self.objs[2])
+
+        self._check([0, [1, [2]]])
 
 
 class UtilTests(unittest.TestCase):
@@ -78,8 +132,11 @@ class UtilTests(unittest.TestCase):
         display_value = display_for_field(None, models.TimeField())
         self.assertEqual(display_value, EMPTY_CHANGELIST_VALUE)
 
+        # Regression test for #13071: NullBooleanField has special
+        # handling.
         display_value = display_for_field(None, models.NullBooleanField())
-        self.assertEqual(display_value, EMPTY_CHANGELIST_VALUE)
+        expected = u'<img src="%simg/admin/icon-unknown.gif" alt="None" />' % settings.ADMIN_MEDIA_PREFIX
+        self.assertEqual(display_value, expected)
 
         display_value = display_for_field(None, models.DecimalField())
         self.assertEqual(display_value, EMPTY_CHANGELIST_VALUE)
@@ -100,7 +157,7 @@ class UtilTests(unittest.TestCase):
             "another name"
         )
         self.assertEquals(
-            label_for_field("title2", Article, return_attr=True), 
+            label_for_field("title2", Article, return_attr=True),
             ("another name", None)
         )
 
@@ -122,24 +179,24 @@ class UtilTests(unittest.TestCase):
             return "nothing"
         self.assertEquals(
             label_for_field(test_callable, Article),
-            "test_callable"
+            "Test callable"
         )
         self.assertEquals(
             label_for_field(test_callable, Article, return_attr=True),
-            ("test_callable", test_callable)
+            ("Test callable", test_callable)
         )
 
         self.assertEquals(
             label_for_field("test_from_model", Article),
-            "test_from_model"
+            "Test from model"
         )
         self.assertEquals(
             label_for_field("test_from_model", Article, return_attr=True),
-            ("test_from_model", Article.test_from_model)
+            ("Test from model", Article.test_from_model)
         )
         self.assertEquals(
             label_for_field("test_from_model_with_override", Article),
-            "not what you expect"
+            "not What you Expect"
         )
 
         self.assertEquals(
@@ -150,15 +207,16 @@ class UtilTests(unittest.TestCase):
         class MockModelAdmin(object):
             def test_from_model(self, obj):
                 return "nothing"
-            test_from_model.short_description = "not really the model"
+            test_from_model.short_description = "not Really the Model"
+
         self.assertEquals(
             label_for_field("test_from_model", Article, model_admin=MockModelAdmin),
-            "not really the model"
+            "not Really the Model"
         )
         self.assertEquals(
             label_for_field("test_from_model", Article,
                 model_admin = MockModelAdmin,
                 return_attr = True
             ),
-            ("not really the model", MockModelAdmin.test_from_model)
+            ("not Really the Model", MockModelAdmin.test_from_model)
         )

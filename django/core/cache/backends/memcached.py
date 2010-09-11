@@ -7,6 +7,11 @@ from django.utils.encoding import smart_unicode, smart_str
 
 try:
     import cmemcache as memcache
+    import warnings
+    warnings.warn(
+        "Support for the 'cmemcache' library has been deprecated. Please use python-memcached instead.",
+        PendingDeprecationWarning
+    )
 except ImportError:
     try:
         import memcache
@@ -43,15 +48,9 @@ class CacheClass(BaseCache):
         val = self._cache.get(smart_str(key))
         if val is None:
             return default
-        else:
-            if isinstance(val, basestring):
-                return smart_unicode(val)
-            else:
-                return val
+        return val
 
     def set(self, key, value, timeout=0):
-        if isinstance(value, unicode):
-            value = value.encode('utf-8')
         self._cache.set(smart_str(key), value, self._get_memcache_timeout(timeout))
 
     def delete(self, key):

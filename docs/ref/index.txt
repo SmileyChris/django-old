@@ -1,5 +1,3 @@
-.. _ref-index:
-
 =============
 API Reference
 =============
@@ -11,6 +9,7 @@ API Reference
    contrib/index
    databases
    django-admin
+   exceptions
    files/index
    forms/index
    generic-views
@@ -21,4 +20,5 @@ API Reference
    signals
    templates/index
    unicode
+   utils
    validators

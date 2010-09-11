@@ -126,9 +126,9 @@ class FileSaveRaceConditionTest(TestCase):
         name = self.save_file('conflict')
         self.thread.join()
         self.assert_(self.storage.exists('conflict'))
-        self.assert_(self.storage.exists('conflict_'))
+        self.assert_(self.storage.exists('conflict_1'))
         self.storage.delete('conflict')
-        self.storage.delete('conflict_')
+        self.storage.delete('conflict_1')
 
 class FileStoragePermissions(TestCase):
     def setUp(self):
@@ -167,7 +167,7 @@ class FileStoragePathParsing(TestCase):
 
         self.failIf(os.path.exists(os.path.join(self.storage_dir, 'dotted_.path')))
         self.assert_(os.path.exists(os.path.join(self.storage_dir, 'dotted.path/test')))
-        self.assert_(os.path.exists(os.path.join(self.storage_dir, 'dotted.path/test_')))
+        self.assert_(os.path.exists(os.path.join(self.storage_dir, 'dotted.path/test_1')))
 
     def test_first_character_dot(self):
         """
@@ -181,9 +181,9 @@ class FileStoragePathParsing(TestCase):
         # Before 2.6, a leading dot was treated as an extension, and so
         # underscore gets added to beginning instead of end.
         if sys.version_info < (2, 6):
-            self.assert_(os.path.exists(os.path.join(self.storage_dir, 'dotted.path/_.test')))
+            self.assert_(os.path.exists(os.path.join(self.storage_dir, 'dotted.path/_1.test')))
         else:
-            self.assert_(os.path.exists(os.path.join(self.storage_dir, 'dotted.path/.test_')))
+            self.assert_(os.path.exists(os.path.join(self.storage_dir, 'dotted.path/.test_1')))
 
 if Image is not None:
     class DimensionClosingBug(TestCase):
@@ -230,3 +230,19 @@ if Image is not None:
             finally:
                 del images.open
             self.assert_(FileWrapper._closed)
+
+    class InconsistentGetImageDimensionsBug(TestCase):
+        """
+        Test that get_image_dimensions() works properly after various calls using a file handler (#11158)
+        """
+        def test_multiple_calls(self):
+            """
+            Multiple calls of get_image_dimensions() should return the same size.
+            """
+            from django.core.files.images import ImageFile
+            img_path = os.path.join(os.path.dirname(__file__), "test.png")
+            image = ImageFile(open(img_path))
+            image_pil = Image.open(img_path)
+            size_1, size_2 = get_image_dimensions(image), get_image_dimensions(image)
+            self.assertEqual(image_pil.size, size_1)
+            self.assertEqual(size_1, size_2)
