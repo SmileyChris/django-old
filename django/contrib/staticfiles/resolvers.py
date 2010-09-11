@@ -60,7 +60,7 @@ class AppDirectoriesFileResolver(BaseFileResolver):
         """
         matches = []
         for app in models.get_apps():
-            app_matches = resolve_for_app(app, path, all=all)
+            app_matches = self.resolve_for_app(app, path, all=all)
             if app_matches:
                 if not all:
                     return app_matches
@@ -128,7 +128,7 @@ def resolve(path, all=False):
     """
     matches = []
     for resolver_path in settings.STATICFILES_RESOLVERS:
-        resolver = get_resolver(resolver_path)
+        resolver = get_resolver(resolver_path)()
         result = resolver.resolve(path, all=all)
         if not all and result:
             return result
@@ -163,7 +163,7 @@ def get_resolver(import_path):
     except AttributeError:
         raise ImproperlyConfigured('Module "%s" does not define a "%s" '
                                    'class.' % (module, classname))
-    if not isinstance(cls, BaseResolver):
+    if not issubclass(cls, BaseFileResolver):
         raise ImproperlyConfigured('Resolver "%s" is not a subclass of "%s"' %
-                                   (cls, BaseResolver))
+                                   (cls, BaseFileResolver))
     return cls

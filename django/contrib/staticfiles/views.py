@@ -17,7 +17,7 @@ def serve(request, path, show_indexes=False):
 
     To use, put a URL pattern such as::
 
-        (r'^(?P<path>.*)$', 'staticfiles.views.serve')
+        (r'^(?P<path>.*)$', 'django.contrib.staticfiles.views.serve')
 
     in your URLconf. You may also set ``show_indexes`` to ``True`` if you'd
     like to serve a basic index of the directory.  This index view will use the
