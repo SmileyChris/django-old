@@ -1,7 +1,7 @@
 try:
-    from functools import update_wrapper, wraps
+    from functools import wraps
 except ImportError:
-    from django.utils.functional import update_wrapper, wraps  # Python 2.4 fallback.
+    from django.utils.functional import wraps  # Python 2.4 fallback.
 
 from django.contrib.auth import REDIRECT_FIELD_NAME
 from django.http import HttpResponseRedirect
