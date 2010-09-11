@@ -28,6 +28,10 @@ ALWAYS_INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.admindocs',
     'django.contrib.staticfiles',
+    # We have to load this apps to test staticfiles.
+    'regressiontests.staticfiles_tests.apps.test',
+    'regressiontests.staticfiles_tests.apps.skip',
+    'regressiontests.staticfiles_tests.apps.no_label',
 ]
 
 def get_test_models():
