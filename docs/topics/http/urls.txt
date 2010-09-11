@@ -825,7 +825,7 @@ namespaces into URLs on specific application instances, according to the
 reverse_lazy()
 --------------
 
-.. versionadded:: 1.2
+.. versionadded:: 1.3
 
 A lazily evaluated version of `reverse()`_.
 
