@@ -13,19 +13,17 @@ def get_files_for_app(app, ignore_patterns=[]):
     """
     prefix = get_app_prefix(app)
     files = []
-    for storage in app_static_storages(app):
+    storage = app_static_storage(app)
+    if storage:
         for path in get_files(storage, ignore_patterns):
             if prefix:
                 path = '/'.join([prefix, path])
             files.append(path)
     return files
 
-
-def app_static_storages(app):
+def app_static_storage(app):
     """
-    A generator which yields the potential static file storages for an app.
-    
-    Only storages for valid locations are yielded.
+    Returns a static file storage if available in the given app.
     
     """
     # "app" is actually the models module of the app. Remove the '.models'. 
@@ -35,12 +33,11 @@ def app_static_storages(app):
     # would be wrong. Import the actual app as opposed to the models module.
     app = import_module(app_module)
     app_root = os.path.dirname(app.__file__)
-    for media_dirname in settings.STATICFILES_DIRNAMES:
-        location = os.path.join(app_root, media_dirname)
-        if not os.path.isdir(location):
-            continue
-        yield FileSystemStorage(location=location)
+    location = os.path.join(app_root, 'media')
+    if not os.path.isdir(location):
+        return None
 
+    return FileSystemStorage(location=location)
 
 def get_app_prefix(app):
     """
@@ -51,9 +48,10 @@ def get_app_prefix(app):
     bits = app.__name__.split('.')[:-1]
     app_name = bits[-1]
     app_module = '.'.join(bits)
-    if app_module in settings.STATICFILES_PREPEND_LABEL_APPS:
+    if app_module == 'django.contrib.admin':
         return app_name
-
+    else:
+        return None
 
 def get_files(storage, ignore_patterns=[], location=''):
     """

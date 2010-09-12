@@ -110,7 +110,8 @@ Type 'yes' to continue, or 'no' to cancel: """)
         """
         ignore_patterns = options['ignore_patterns']
         prefix = utils.get_app_prefix(app)
-        for storage in utils.app_static_storages(app):
+        storage = utils.app_static_storage(app)
+        if storage:
             for path in utils.get_files(storage, ignore_patterns):
                 self.copy_file(path, prefix, storage, **options)
 

@@ -18,8 +18,6 @@ class FakeSettingsMixin:
         self.old_staticfiles_url = settings.STATICFILES_URL
         self.old_staticfiles_root = settings.STATICFILES_ROOT
         self.old_staticfiles_dirs = settings.STATICFILES_DIRS
-        self.old_staticfiles_prepend_label_apps = settings.STATICFILES_PREPEND_LABEL_APPS
-        self.old_staticfiles_dirnames = settings.STATICFILES_DIRNAMES
 
         self.old_media_root = settings.MEDIA_ROOT
         self.old_media_url = settings.MEDIA_URL
@@ -31,10 +29,6 @@ class FakeSettingsMixin:
         settings.MEDIA_URL = '/media/'
 
         settings.STATICFILES_DIRS = (os.path.join(TEST_ROOT, 'project', 'static'),)
-        settings.STATICFILES_PREPEND_LABEL_APPS = (
-            'regressiontests.staticfiles_tests.apps.no_label',
-        )
-        settings.STATICFILES_DIRNAMES = ('media', 'otherdir')
 
     def restore_settings(self):
         settings.MEDIA_ROOT = self.old_media_root
@@ -44,9 +38,6 @@ class FakeSettingsMixin:
         settings.STATICFILES_URL = self.old_staticfiles_url
 
         settings.STATICFILES_DIRS = self.old_staticfiles_dirs
-        settings.STATICFILES_PREPEND_LABEL_APPS = self.old_staticfiles_prepend_label_apps
-        settings.STATICFILES_DIRNAMES = self.old_staticfiles_dirnames
-
 
 class UtilityAssertsTestCase(TestCase):
     """
@@ -101,22 +92,6 @@ class BaseFileResolutionTests:
         
         """
         self.assertFileContains('test/file1.txt', 'file1 in the app dir')
-
-    def test_prepend_label_apps(self):
-        """
-        Can find a file in an app media/ directory using
-        STATICFILES_PREPEND_LABEL_APPS.
-        
-        """
-        self.assertFileContains('no_label/file2.txt', 'file2 in no_label')
-
-    def test_staticfiles_dirnames(self):
-        """
-        Can find a file in an app subdirectory whose name is listed in
-        STATICFILES_DIRNAMES setting.
-
-        """
-        self.assertFileContains('odfile.txt', 'File in otherdir.')
 
 class TestResolveStatic(UtilityAssertsTestCase, BaseFileResolutionTests, FakeSettingsMixin):
     """
@@ -346,10 +321,31 @@ class TestServeMedia(TestCase, FakeSettingsMixin):
         response = self.client.get(posixpath.join(settings.MEDIA_URL, 'media-file.txt'))
         self.assertContains(response, 'Media file.')
 
+class TestServeAdminMedia(TestCase, FakeSettingsMixin):
+    """
+    Test serving media from django.contrib.admin.
+
+    """
+    urls = "regressiontests.staticfiles_tests.urls"
+
+    def setUp(self):
+        self.fake_settings()
+        self.client = Client()
+
+    def tearDown(self):
+        self.restore_settings()
+
+    def test_serve_admin_media(self):
+        response = self.client.get(posixpath.join(settings.ADMIN_MEDIA_PREFIX, 'css/base.css'))
+        self.assertContains(response, 'body')
+
 class TestServeStaticBackwardCompat(TestServeStatic):
     urls = "regressiontests.staticfiles_tests.urls_backward_compat"
 
 class TestServeMediaBackwardCompat(TestServeMedia):
+    urls = "regressiontests.staticfiles_tests.urls_backward_compat"
+
+class TestServeAdminMediaBackwardCompat(TestServeAdminMedia):
     urls = "regressiontests.staticfiles_tests.urls_backward_compat"
 
 class ResolverTestCase:

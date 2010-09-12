@@ -83,12 +83,12 @@ class AppDirectoriesFileResolver(BaseFileResolver):
                 return []
             path = path[len(prefix):]
         paths = []
-        for storage in utils.app_static_storages(app):
-            if storage.exists(path):
-                matched_path = storage.path(path)
-                if not all:
-                    return matched_path
-                paths.append(matched_path)
+        storage = utils.app_static_storage(app)
+        if storage and storage.exists(path):
+            matched_path = storage.path(path)
+            if not all:
+                return matched_path
+            paths.append(matched_path)
         return paths
 
 

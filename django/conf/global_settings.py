@@ -560,12 +560,6 @@ STATICFILES_URL = '/static/'
 # which hold static files and should be taken into account during resolving
 STATICFILES_DIRS = ()
 
-# Names of app sub directories that should be automatically scanned
-STATICFILES_DIRNAMES = [
-    'media',
-    'static',
-]
-
 # The default file storage backend used during the build process
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
