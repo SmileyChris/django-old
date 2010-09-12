@@ -401,13 +401,13 @@ class TestAppDirectoriesFileResolver(UtilityAssertsTestCase, ResolverTestCase, F
     def tearDown(self):
         self.restore_settings()
 
-class TestLocalStorageFileResolver(UtilityAssertsTestCase, ResolverTestCase, FakeSettingsMixin):
+class TestDefaultStorageFileResolver(UtilityAssertsTestCase, ResolverTestCase, FakeSettingsMixin):
     """
-    Test LocalStorageFileResolver.
+    Test DefaultStorageFileResolver.
     """
     def setUp(self):
         self.fake_settings()
-        self.resolver = resolvers.LocalStorageFileResolver()
+        self.resolver = resolvers.DefaultStorageFileResolver()
         test_file_path = os.path.join(TEST_ROOT, 'project/site_media/static/test/storage.txt')
         self.resolve_first = ("test/storage.txt", test_file_path)
         self.resolve_all = ("test/storage.txt", [test_file_path])

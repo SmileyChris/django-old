@@ -588,5 +588,5 @@ ADMIN_MEDIA_PREFIX = '/static/admin/'
 STATICFILES_RESOLVERS = (
     'django.contrib.staticfiles.resolvers.FileSystemFileResolver',
     'django.contrib.staticfiles.resolvers.AppDirectoriesFileResolver',
-    'django.contrib.staticfiles.resolvers.LocalStorageFileResolver',
+    'django.contrib.staticfiles.resolvers.DefaultStorageFileResolver',
 )
