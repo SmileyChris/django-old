@@ -25,15 +25,12 @@ def app_static_storages(app):
     """
     A generator which yields the potential static file storages for an app.
     
-    Excluded apps do not yield any storages
-    
     Only storages for valid locations are yielded.
     
     """
     # "app" is actually the models module of the app. Remove the '.models'. 
     app_module = '.'.join(app.__name__.split('.')[:-1])
-    if app_module in settings.STATICFILES_EXCLUDED_APPS:
-        return
+
     # The models module may be a package in which case dirname(app.__file__)
     # would be wrong. Import the actual app as opposed to the models module.
     app = import_module(app_module)
