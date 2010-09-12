@@ -566,15 +566,6 @@ STATICFILES_DIRNAMES = [
     'static',
 ]
 
-# Apps that have media in <app>/media, not in <app>/media/<app>,
-# e.g. django.contrib.admin
-STATICFILES_PREPEND_LABEL_APPS = (
-    'django.contrib.admin',
-)
-
-# Apps that shouldn't be taken into account when collecting app media
-STATICFILES_EXCLUDED_APPS = ()
-
 # The default file storage backend used during the build process
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
