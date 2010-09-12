@@ -19,7 +19,6 @@ class FakeSettingsMixin:
         self.old_staticfiles_root = settings.STATICFILES_ROOT
         self.old_staticfiles_dirs = settings.STATICFILES_DIRS
         self.old_staticfiles_prepend_label_apps = settings.STATICFILES_PREPEND_LABEL_APPS
-        self.old_staticfiles_excluded_apps = settings.STATICFILES_EXCLUDED_APPS
         self.old_staticfiles_dirnames = settings.STATICFILES_DIRNAMES
 
         self.old_media_root = settings.MEDIA_ROOT
@@ -35,9 +34,6 @@ class FakeSettingsMixin:
         settings.STATICFILES_PREPEND_LABEL_APPS = (
             'regressiontests.staticfiles_tests.apps.no_label',
         )
-        settings.STATICFILES_EXCLUDED_APPS = (
-            'regressiontests.staticfiles_tests.apps.skip',
-        )
         settings.STATICFILES_DIRNAMES = ('media', 'otherdir')
 
     def restore_settings(self):
@@ -49,7 +45,6 @@ class FakeSettingsMixin:
 
         settings.STATICFILES_DIRS = self.old_staticfiles_dirs
         settings.STATICFILES_PREPEND_LABEL_APPS = self.old_staticfiles_prepend_label_apps
-        settings.STATICFILES_EXCLUDED_APPS = self.old_staticfiles_excluded_apps
         settings.STATICFILES_DIRNAMES = self.old_staticfiles_dirnames
 
 
@@ -114,13 +109,6 @@ class BaseFileResolutionTests:
         
         """
         self.assertFileContains('no_label/file2.txt', 'file2 in no_label')
-
-    def test_excluded_apps(self):
-        """
-        Can not find file in an app in STATICFILES_EXCLUDED_APPS.
-        
-        """
-        self.assertFileNotFound('skip/skip_file.txt')
 
     def test_staticfiles_dirnames(self):
         """
