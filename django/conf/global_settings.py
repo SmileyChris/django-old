@@ -263,7 +263,7 @@ DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
 MEDIA_ROOT = ''
 
 # URL that handles the media served from MEDIA_ROOT.
-# Example: "http://media.lawrence.com"
+# Example: "http://media.lawrence.com/"
 MEDIA_URL = ''
 
 # List of upload handler classes to be applied in order.

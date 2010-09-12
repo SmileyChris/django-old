@@ -1072,12 +1072,9 @@ MEDIA_URL
 Default: ``''`` (Empty string)
 
 URL that handles the media served from ``MEDIA_ROOT``.
-Example: ``"http://media.lawrence.com"``
+Example: ``"http://media.lawrence.com/"``
 
-Note that this should have a trailing slash if it has a path component.
-
-Good: ``"http://www.example.com/static/"``
-Bad: ``"http://www.example.com/static"``
+It must end in a slash if set to a non-empty value.
 
 .. setting:: MIDDLEWARE_CLASSES
 

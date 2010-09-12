@@ -81,6 +81,22 @@ If you are currently using the ``mod_python`` request handler, it is strongly
 encouraged you redeploy your Django instances using :doc:`mod_wsgi
 </howto/deployment/modwsgi>`.
 
+Other changes in Django 1.3
+===========================
+
+``MEDIA_URL`` must end in a slash
+---------------------------------
+
+Previously, the ``MEDIA_URL`` setting only required a trailing slash if it
+contained a suffix beyond the domain name.
+
+A trailing slash is now *required* for ``MEDIA_URL`` as long as it is not
+blank. This ensures there is a consistent way to combine ``MEDIA_URL`` in
+templates.
+
+Project settings modules which provide a ``MEDIA_URL`` without a trailing slash
+will now raise an ``ImproperlyConfigured`` error.
+
 What's new in Django 1.3
 ========================
 

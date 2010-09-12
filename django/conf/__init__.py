@@ -11,6 +11,7 @@ import re
 import time     # Needed for Windows
 
 from django.conf import global_settings
+from django.core.exceptions import ImproperlyConfigured
 from django.utils.functional import LazyObject
 from django.utils import importlib
 
@@ -59,7 +60,19 @@ class LazySettings(LazyObject):
         return bool(self._wrapped)
     configured = property(configured)
 
-class Settings(object):
+
+class BaseSettings(object):
+    """ 
+    Common logic for settings whether set by a module or by the user.
+    """
+    def __setattr__(self, name, value):
+        if name == "MEDIA_URL" and value and value[-1] != '/':
+            raise ImproperlyConfigured('If set, MEDIA_URL must end in a '
+                                       'slash.')
+        object.__setattr__(self, name, value)
+
+
+class Settings(BaseSettings):
     def __init__(self, settings_module):
         # update this dict from global settings (but only for ALL_CAPS settings)
         for setting in dir(global_settings):
@@ -114,7 +127,8 @@ class Settings(object):
             os.environ['TZ'] = self.TIME_ZONE
             time.tzset()
 
-class UserSettingsHolder(object):
+
+class UserSettingsHolder(BaseSettings):
     """
     Holder for user configured settings.
     """
@@ -138,5 +152,5 @@ class UserSettingsHolder(object):
     # For Python < 2.6:
     __members__ = property(lambda self: self.__dir__())
 
-settings = LazySettings()
 
+settings = LazySettings()
