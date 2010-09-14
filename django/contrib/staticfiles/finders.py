@@ -3,9 +3,10 @@ from django.conf import settings
 from django.db import models
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.importlib import import_module
+from django.core.files.storage import default_storage
 
 from django.contrib.staticfiles import utils
-from django.contrib.staticfiles.storage import default_static_storage
+
 
 class BaseFinder(object):
 
@@ -97,7 +98,7 @@ class StorageFinder(BaseFinder):
 
     def __init__(self, *args, **kwargs):
         if self.static_storage is None:
-            self.static_storage = default_static_storage
+            self.static_storage = default_storage
         super(StorageFinder, self).__init__(*args, **kwargs)
 
     def find(self, path, all=False):
