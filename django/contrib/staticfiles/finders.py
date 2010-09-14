@@ -9,17 +9,23 @@ from django.contrib.staticfiles import utils
 
 
 class BaseFinder(object):
+    """
+    A base file finder to be used for custom staticfiles finder classes.
 
+    """
     def find(self, path, all=False):
         """
         Given a relative file path this ought to find an
         absolute file path.
         """
-        raise NotImplementedError
+        raise NotImplementedError("Finder subclasses need to implement find()")
 
 
 class FileSystemFinder(BaseFinder):
-
+    """
+    A static files finder that uses the ``STATICFILES_DIRS`` setting
+    to locate files.
+    """
     def find(self, path, all=False):
         """
         Looks for files in the extra media locations
@@ -54,7 +60,9 @@ class FileSystemFinder(BaseFinder):
 
 
 class AppDirectoriesFinder(BaseFinder):
-
+    """
+    A static files finder that looks in the ``media`` directory of each app.
+    """
     def find(self, path, all=False):
         """
         Looks for files in the app directories.
@@ -94,6 +102,9 @@ class AppDirectoriesFinder(BaseFinder):
 
 
 class StorageFinder(BaseFinder):
+    """
+    A static files finder that uses the default storage backend.
+    """
     static_storage = None
 
     def __init__(self, *args, **kwargs):

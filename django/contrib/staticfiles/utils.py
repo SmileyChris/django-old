@@ -35,7 +35,6 @@ def app_static_storage(app):
     location = os.path.join(app_root, 'media')
     if not os.path.isdir(location):
         return None
-
     return FileSystemStorage(location=location)
 
 def get_app_prefix(app):
