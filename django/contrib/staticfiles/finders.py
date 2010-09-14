@@ -7,9 +7,9 @@ from django.utils.importlib import import_module
 
 from django.contrib.staticfiles import utils
 
-class BaseFileResolver(object):
+class BaseFinder(object):
 
-    def resolve(self, path, all=False):
+    def find(self, path, all=False):
         """
         Given a relative file path this ought to find an
         absolute file path.
@@ -17,9 +17,9 @@ class BaseFileResolver(object):
         raise NotImplementedError
 
 
-class FileSystemFileResolver(BaseFileResolver):
+class FileSystemFinder(BaseFinder):
 
-    def resolve(self, path, all=False):
+    def find(self, path, all=False):
         """
         Looks for files in the extra media locations
         as defined in ``STATICFILES_DIRS``.
@@ -30,16 +30,16 @@ class FileSystemFileResolver(BaseFileResolver):
                 prefix, root = root
             else:
                 prefix = ''
-            matched_path = self.resolve_for_location(root, path, prefix)
+            matched_path = self.find_location(root, path, prefix)
             if matched_path:
                 if not all:
                     return matched_path
                 matches.append(matched_path)
         return matches
 
-    def resolve_for_location(self, root, path, prefix=None):
+    def find_location(self, root, path, prefix=None):
         """
-        Find a requested static file in a location, returning the resolved
+        Find a requested static file in a location, returning the found
         absolute path (or ``None`` if no match).
         """
         if prefix:
@@ -52,28 +52,28 @@ class FileSystemFileResolver(BaseFileResolver):
             return path
 
 
-class AppDirectoriesFileResolver(BaseFileResolver):
+class AppDirectoriesFinder(BaseFinder):
 
-    def resolve(self, path, all=False):
+    def find(self, path, all=False):
         """
         Looks for files in the app directories.
         """
         matches = []
         for app in models.get_apps():
-            app_matches = self.resolve_for_app(app, path, all=all)
+            app_matches = self.find_in_app(app, path, all=all)
             if app_matches:
                 if not all:
                     return app_matches
                 matches.extend(app_matches)
         return matches
 
-    def resolve_for_app(self, app, path, all=False):
+    def find_in_app(self, app, path, all=False):
         """
         Find a requested static file in an app's media locations.
 
-        If ``all`` is ``False`` (default), return the first matching resolved
+        If ``all`` is ``False`` (default), return the first matching
         absolute path (or ``None`` if no match). Otherwise return a list of
-        resolved absolute paths.
+        found absolute paths.
 
         """
         prefix = utils.get_app_prefix(app)
@@ -92,14 +92,14 @@ class AppDirectoriesFileResolver(BaseFileResolver):
         return paths
 
 
-class DefaultStorageFileResolver(BaseFileResolver):
+class StorageFinder(BaseFinder):
     static_storage = None
 
     def __init__(self, *args, **kwargs):
         self.static_storage = get_storage_class(settings.STATICFILES_STORAGE)()
-        super(DefaultStorageFileResolver, self).__init__(*args, **kwargs)
+        super(DefaultStorageFinder, self).__init__(*args, **kwargs)
 
-    def resolve(self, path, all=False):
+    def find(self, path, all=False):
         """
         Last resort, looks for files in the
         static files storage if it's local.
@@ -117,7 +117,7 @@ class DefaultStorageFileResolver(BaseFileResolver):
         return []
 
 
-def resolve(path, all=False):
+def find(path, all=False):
     """
     Find a requested static file, first looking in any defined extra media
     locations and next in any (non-excluded) installed apps.
@@ -125,15 +125,15 @@ def resolve(path, all=False):
     If no matches are found and the static location is local, look for a match
     there too.
     
-    If ``all`` is ``False`` (default), return the first matching resolved
+    If ``all`` is ``False`` (default), return the first matching
     absolute path (or ``None`` if no match). Otherwise return a list of
-    resolved absolute paths.
+    found absolute paths.
     
     """
     matches = []
-    for resolver_path in settings.STATICFILES_RESOLVERS:
-        resolver = get_resolver(resolver_path)()
-        result = resolver.resolve(path, all=all)
+    for finder_path in settings.STATICFILES_FINDERS:
+        finder = get_finder(finder_path)()
+        result = finder.find(path, all=all)
         if not all and result:
             return result
         if not isinstance(result, (list, tuple)):
@@ -147,7 +147,7 @@ def resolve(path, all=False):
     return all and [] or None
 
 
-def get_resolver(import_path):
+def get_finder(import_path):
     """
     Imports the message storage class described by import_path, where
     import_path is the full Python path to the class.
@@ -167,7 +167,7 @@ def get_resolver(import_path):
     except AttributeError:
         raise ImproperlyConfigured('Module "%s" does not define a "%s" '
                                    'class.' % (module, classname))
-    if not issubclass(cls, BaseFileResolver):
-        raise ImproperlyConfigured('Resolver "%s" is not a subclass of "%s"' %
-                                   (cls, BaseFileResolver))
+    if not issubclass(cls, BaseFinder):
+        raise ImproperlyConfigured('Finder "%s" is not a subclass of "%s"' %
+                                   (cls, BaseFinder))
     return cls
