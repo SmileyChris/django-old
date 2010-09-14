@@ -4,12 +4,13 @@ import os
 import sys
 from cStringIO import StringIO
 import posixpath
+
 from django.test import TestCase, Client
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
 
-from django.contrib.staticfiles import resolvers
+from django.contrib.staticfiles import finders
 
 TEST_ROOT = os.path.dirname(__file__)
 
@@ -57,7 +58,7 @@ class UtilityAssertsTestCase(TestCase):
 class BaseFileResolutionTests:
     """
     Tests shared by all file-resolving features (build_static,
-    resolve_static, and static serve view).
+    find_static, and static serve view).
     
     This relies on the asserts defined in UtilityAssertsTestCase, but
     is separated because some test cases need those asserts without
@@ -93,9 +94,9 @@ class BaseFileResolutionTests:
         """
         self.assertFileContains('test/file1.txt', 'file1 in the app dir')
 
-class TestResolveStatic(UtilityAssertsTestCase, BaseFileResolutionTests, FakeSettingsMixin):
+class TestFindStatic(UtilityAssertsTestCase, BaseFileResolutionTests, FakeSettingsMixin):
     """
-    Test ``resolve_static`` management command.
+    Test ``find_static`` management command.
 
     """
 
@@ -109,7 +110,7 @@ class TestResolveStatic(UtilityAssertsTestCase, BaseFileResolutionTests, FakeSet
         _stdout = sys.stdout
         sys.stdout = StringIO()
         try:
-            call_command('resolve_static', filepath, all=False, verbosity='0')
+            call_command('find_static', filepath, all=False, verbosity='0')
             sys.stdout.seek(0)
             filepath = sys.stdout.read().strip()
             contents = open(filepath).read()
@@ -119,14 +120,14 @@ class TestResolveStatic(UtilityAssertsTestCase, BaseFileResolutionTests, FakeSet
 
     def test_all_files(self):
         """
-        Test that resolve_static returns all candidate files if run
+        Test that find_static returns all candidate files if run
         without --first.
 
         """
         _stdout = sys.stdout
         sys.stdout = StringIO()
         try:
-            call_command('resolve_static', 'test/file.txt', verbosity='0')
+            call_command('find_static', 'test/file.txt', verbosity='0')
             sys.stdout.seek(0)
             lines = [l.strip() for l in sys.stdout.readlines()]
         finally:
@@ -348,65 +349,65 @@ class TestServeMediaBackwardCompat(TestServeMedia):
 class TestServeAdminMediaBackwardCompat(TestServeAdminMedia):
     urls = "regressiontests.staticfiles_tests.urls_backward_compat"
 
-class ResolverTestCase:
-    def test_resolve_first(self):
-        src, dst = self.resolve_first
-        self.assertEquals(self.resolver.resolve(src), dst)
+class FinderTestCase:
+    def test_find_first(self):
+        src, dst = self.find_first
+        self.assertEquals(self.finder.find(src), dst)
 
-    def test_resolve_all(self):
-        src, dst = self.resolve_all
-        self.assertEquals(self.resolver.resolve(src, all=True), dst)
+    def test_find_all(self):
+        src, dst = self.find_all
+        self.assertEquals(self.finder.find(src, all=True), dst)
 
-class TestFileSystemFileResolver(UtilityAssertsTestCase, ResolverTestCase, FakeSettingsMixin):
+class TestFileSystemFinder(UtilityAssertsTestCase, FinderTestCase, FakeSettingsMixin):
     """
-    Test FileSystemFileResolver.
+    Test FileSystemFinder.
     """
     def setUp(self):
         self.fake_settings()
-        self.resolver = resolvers.FileSystemFileResolver()
+        self.finder = finders.FileSystemFinder()
         test_file_path = os.path.join(TEST_ROOT, 'project/static/test/file.txt')
-        self.resolve_first = ("test/file.txt", test_file_path)
-        self.resolve_all = ("test/file.txt", [test_file_path])
+        self.find_first = ("test/file.txt", test_file_path)
+        self.find_all = ("test/file.txt", [test_file_path])
 
     def tearDown(self):
         self.restore_settings()
 
-class TestAppDirectoriesFileResolver(UtilityAssertsTestCase, ResolverTestCase, FakeSettingsMixin):
+class TestAppDirectoriesFinder(UtilityAssertsTestCase, FinderTestCase, FakeSettingsMixin):
     """
-    Test AppDirectoriesFileResolver.
+    Test AppDirectoriesFinder.
     """
     def setUp(self):
         self.fake_settings()
-        self.resolver = resolvers.AppDirectoriesFileResolver()
+        self.finder = finders.AppDirectoriesFinder()
         test_file_path = os.path.join(TEST_ROOT, 'apps/test/media/test/file1.txt')
-        self.resolve_first = ("test/file1.txt", test_file_path)
-        self.resolve_all = ("test/file1.txt", [test_file_path])
+        self.find_first = ("test/file1.txt", test_file_path)
+        self.find_all = ("test/file1.txt", [test_file_path])
 
     def tearDown(self):
         self.restore_settings()
 
-class TestDefaultStorageFileResolver(UtilityAssertsTestCase, ResolverTestCase, FakeSettingsMixin):
+class TestStorageFinder(UtilityAssertsTestCase, FinderTestCase, FakeSettingsMixin):
     """
-    Test DefaultStorageFileResolver.
+    Test StorageFinder.
     """
     def setUp(self):
         self.fake_settings()
-        self.resolver = resolvers.DefaultStorageFileResolver()
+        self.finder = finders.StorageFinder()
         test_file_path = os.path.join(TEST_ROOT, 'project/site_media/static/test/storage.txt')
-        self.resolve_first = ("test/storage.txt", test_file_path)
-        self.resolve_all = ("test/storage.txt", [test_file_path])
+        self.find_first = ("test/storage.txt", test_file_path)
+        self.find_all = ("test/storage.txt", [test_file_path])
 
     def tearDown(self):
         self.restore_settings()
 
-class TestMiscResolver(TestCase):
+class TestMiscFinder(TestCase):
     """
-    A few misc resolver tests.
+    A few misc finder tests.
     """
-    def test_get_resolver(self):
-        self.assertEquals(resolvers.FileSystemFileResolver,
-            resolvers.get_resolver("django.contrib.staticfiles.resolvers.FileSystemFileResolver"))
+    def test_get_finder(self):
+        self.assertEquals(finders.FileSystemFinder,
+            finders.get_finder("django.contrib.staticfiles.finders.FileSystemFinder"))
         self.assertRaises(ImproperlyConfigured,
-            resolvers.get_resolver, "django.contrib.staticfiles.resolvers.FooBarResolver")
+            finders.get_finder, "django.contrib.staticfiles.finders.FooBarFinder")
         self.assertRaises(ImproperlyConfigured,
-            resolvers.get_resolver, "foo.bar.FooBarResolver")
+            finders.get_finder, "foo.bar.FooBarFinder")

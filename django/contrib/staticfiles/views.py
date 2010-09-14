@@ -7,7 +7,7 @@ import os
 from django import http
 from django.views.static import serve as django_serve
 
-from django.contrib.staticfiles.resolvers import resolve
+from django.contrib.staticfiles.finder import find
 
 
 def serve(request, path, show_indexes=False):
@@ -25,9 +25,9 @@ def serve(request, path, show_indexes=False):
     a template called ``static/directory_index``.
     
     """
-    absolute_path = resolve(path)
+    absolute_path = find(path)
     if not absolute_path:
-        raise http.Http404('%r could not be resolved to a static file.' % path)
+        raise http.Http404('%r could not be matched to a static file.' % path)
     absolute_path, filename = os.path.split(absolute_path)
     return django_serve(request, path=filename, document_root=absolute_path,
                         show_indexes=show_indexes)
