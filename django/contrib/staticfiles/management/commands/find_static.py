@@ -16,9 +16,9 @@ class Command(LabelCommand):
     def handle_label(self, media_path, **options):
         logger = self.get_logger()
         all = options['all']
-        match = finders.find(media_path, all=all)
-        if not match:
+        result = finders.find(media_path, all=all)
+        if not result:
             logger.warning("No matching file found for %r." % media_path)
-        elif all:
-            match = '\n'.join([os.path.realpath(path) for path in match])
-        return match
+            return
+        output = '\n  '.join((os.path.realpath(path) for path in result))
+        logger.info("Found %r here:\n  %s" % (media_path, output))
