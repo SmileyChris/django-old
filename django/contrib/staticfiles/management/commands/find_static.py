@@ -2,7 +2,7 @@ import os
 from optparse import make_option
 from django.core.management.base import LabelCommand
 
-from django.contrib.staticfiles import resolvers
+from django.contrib.staticfiles import finders
 
 class Command(LabelCommand):
     help = "Finds the absolute paths for the given static file(s)."
@@ -16,7 +16,7 @@ class Command(LabelCommand):
     def handle_label(self, media_path, **options):
         logger = self.get_logger()
         all = options['all']
-        match = resolvers.resolve(media_path, all=all)
+        match = finders.find(media_path, all=all)
         if not match:
             logger.warning("No matching file found for %r." % media_path)
         elif all:
