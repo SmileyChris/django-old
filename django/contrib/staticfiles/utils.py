@@ -1,7 +1,6 @@
 import os
 import fnmatch
 
-from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.utils.importlib import import_module
 
@@ -59,7 +58,6 @@ def get_files(storage, ignore_patterns=[], location=''):
     that should be copied, returning this list.
     
     """
-
     def is_ignored(path):
         """
         Return True or False depending on whether the ``path`` should be

@@ -1,11 +1,11 @@
 import os
 from django.conf import settings
-from django.core.files.storage import get_storage_class
 from django.db import models
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.importlib import import_module
 
 from django.contrib.staticfiles import utils
+from django.contrib.staticfiles.storage import default_static_storage
 
 class BaseFinder(object):
 
@@ -96,8 +96,9 @@ class StorageFinder(BaseFinder):
     static_storage = None
 
     def __init__(self, *args, **kwargs):
-        self.static_storage = get_storage_class(settings.STATICFILES_STORAGE)()
-        super(DefaultStorageFinder, self).__init__(*args, **kwargs)
+        if self.static_storage is None:
+            self.static_storage = default_static_storage
+        super(StorageFinder, self).__init__(*args, **kwargs)
 
     def find(self, path, all=False):
         """

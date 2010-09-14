@@ -4,10 +4,11 @@ import shutil
 from optparse import make_option
 
 from django.conf import settings
-from django.core.files.storage import FileSystemStorage, get_storage_class
+from django.core.files.storage import FileSystemStorage
 from django.core.management.base import CommandError, OptionalAppCommand
 
 from django.contrib.staticfiles import utils
+from django.contrib.staticfiles.storage import default_static_storage
 
 class Command(OptionalAppCommand):
     """
@@ -45,17 +46,16 @@ class Command(OptionalAppCommand):
         options['skipped_files'] = []
         options['copied_files'] = []
         options['symlinked_files'] = []
-        storage = get_storage_class(settings.STATICFILES_STORAGE)()
-        options['destination_storage'] = storage
+        options['destination_storage'] = default_static_storage
         try:
-            destination_paths = utils.get_files(storage, ignore_patterns)
+            destination_paths = utils.get_files(default_static_storage, ignore_patterns)
         except OSError:
             # The destination storage location may not exist yet. It'll get
             # created when the first file is copied.
             destination_paths = []
         options['destination_paths'] = destination_paths
         try:
-            storage.path('')
+            default_static_storage.path('')
             destination_local = True
         except NotImplementedError:
             destination_local = False
@@ -82,7 +82,7 @@ Type 'yes' to continue, or 'no' to cancel: """)
     def pre_handle_apps(self, **options):
         """
         Copy all files from a directory.
-        
+
         """
         if not options.get('exclude_dirs', False):
             ignore_patterns = options['ignore_patterns']
