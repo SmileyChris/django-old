@@ -162,11 +162,11 @@ Type 'yes' to continue, or 'no' to cancel: """)
         if options.get('link', False):
             destination_path = destination_storage.path(destination)
             if dry_run:
-                logger.info("Pretending to symlink:\n  %s\nto:\n  %s" %
-                            (source_path, destination_path))
+                logger.info("Pretending to symlink:\n  %s\nto:\n  %s"
+                            % (source_path, destination_path))
             else:
-                logger.debug("Symlinking:\n  %s\nto:\n  %s" %
-                             (source_path, destination_path))
+                logger.debug("Symlinking:\n  %s\nto:\n  %s"
+                             % (source_path, destination_path))
                 try:
                     os.makedirs(os.path.dirname(destination_path))
                 except OSError:
@@ -175,10 +175,9 @@ Type 'yes' to continue, or 'no' to cancel: """)
             options['symlinked_files'].append(destination)
         else:
             if dry_run:
-                logger.info("Pretending to copy:\n  %s\nto:\n  %s" %
-                            (source_path, destination))
+                logger.info("Pretending to copy:\n  %s\nto:\n  %s"
+                            % (source_path, destination))
             else:
-                logger.debug("Copying:\n  %s\nto:\n  %s" % (source_path, destination))
                 if options['destination_local']:
                     destination_path = destination_storage.path(destination)
                     try:
@@ -186,8 +185,12 @@ Type 'yes' to continue, or 'no' to cancel: """)
                     except OSError:
                         pass
                     shutil.copy2(source_path, destination_path)
+                    logger.debug("Copying:\n  %s\nto:\n  %s"
+                                 % (source_path, destination_path))
                 else:
                     source_file = source_storage.open(source)
                     destination_storage.write(destination, source_file)
+                    logger.debug("Copying:\n  %s\nto:\n  %s"
+                                 % (source_path, destination))
             options['copied_files'].append(destination)
         return True
