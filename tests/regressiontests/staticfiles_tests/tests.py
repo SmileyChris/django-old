@@ -28,8 +28,10 @@ class FakeSettingsMixin:
 
         settings.MEDIA_ROOT = os.path.join(TEST_ROOT, 'project', 'site_media', 'media')
         settings.MEDIA_URL = '/media/'
+        settings.STATICFILES_DIRS = (
+            os.path.join(TEST_ROOT, 'project', 'documents'),
+        )
 
-        settings.STATICFILES_DIRS = (os.path.join(TEST_ROOT, 'project', 'static'),)
 
     def restore_settings(self):
         settings.MEDIA_ROOT = self.old_media_root
@@ -365,7 +367,7 @@ class TestFileSystemFinder(UtilityAssertsTestCase, FinderTestCase, FakeSettingsM
     def setUp(self):
         self.fake_settings()
         self.finder = finders.FileSystemFinder()
-        test_file_path = os.path.join(TEST_ROOT, 'project/static/test/file.txt')
+        test_file_path = os.path.join(TEST_ROOT, 'project/documents/test/file.txt')
         self.find_first = ("test/file.txt", test_file_path)
         self.find_all = ("test/file.txt", [test_file_path])
 
