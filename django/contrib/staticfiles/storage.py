@@ -1,3 +1,5 @@
+import os, posixpath
+
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage, get_storage_class
 from django.utils.functional import LazyObject
@@ -10,11 +12,16 @@ class StaticFilesStorage(FileSystemStorage):
     The defaults for ``location`` and ``base_url`` are
     ``STATICFILES_ROOT`` and ``STATICFILES_URL``.
     """
+    staticfiles_location = (settings.STATICFILES_ROOT or
+                            os.path.join(settings.MEDIA_ROOT, 'static'))
+    staticfiles_base_url = (settings.STATICFILES_URL or
+                            posixpath.join(settings.MEDIA_URL, 'static/'))
+
     def __init__(self, location=None, base_url=None, *args, **kwargs):
         if location is None:
-            location = settings.STATICFILES_ROOT
+            location = self.staticfiles_location
         if base_url is None:
-            base_url = settings.STATICFILES_URL
+            base_url = self.staticfiles_base_url
         super(StaticFilesStorage, self).__init__(location, base_url, *args, **kwargs)
 
 

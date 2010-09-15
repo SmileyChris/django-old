@@ -550,11 +550,13 @@ FIXTURE_DIRS = ()
 # STATICFILES #
 ###############
 
-# The directory in which the static files are collected in
-STATICFILES_ROOT = None
+# Absolute path to the directory that holds media.
+# Example: "/home/media/media.lawrence.com/static/"
+STATICFILES_ROOT = ''
 
-# The URL path to STATICFILES_ROOT
-STATICFILES_URL = '/static/'
+# URL that handles the static files served from STATICFILES_ROOT.
+# Example: "http://media.lawrence.com/static/"
+STATICFILES_URL = ''
 
 # A tuple of two-tuples with a name and the path of additional directories
 # which hold static files and should be taken into account during resolving
@@ -563,11 +565,6 @@ STATICFILES_DIRS = ()
 # The default file storage backend used during the build process
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
-# URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
-# trailing slash.
-# Examples: "http://foo.com/media/admin/", "/media/admin/".
-ADMIN_MEDIA_PREFIX = '/static/admin/'
-
 # List of finder classes that know how to find static files in
 # various locations.
 STATICFILES_FINDERS = (
@@ -575,3 +572,8 @@ STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
     'django.contrib.staticfiles.finders.StorageFinder',
 )
+
+# URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
+# trailing slash.
+# Examples: "http://foo.com/media/admin/", "/media/admin/".
+ADMIN_MEDIA_PREFIX = '/media/static/admin/'
