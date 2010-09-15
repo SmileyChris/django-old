@@ -4,11 +4,11 @@ import shutil
 from optparse import make_option
 
 from django.conf import settings
-from django.core.files.storage import FileSystemStorage
+from django.core.files.storage import FileSystemStorage, get_storage_class
 from django.core.management.base import CommandError, OptionalAppCommand
 
 from django.contrib.staticfiles import utils
-from django.contrib.staticfiles.storage import default_static_storage
+
 
 class Command(OptionalAppCommand):
     """
@@ -46,16 +46,16 @@ class Command(OptionalAppCommand):
         options['skipped_files'] = []
         options['copied_files'] = []
         options['symlinked_files'] = []
-        options['destination_storage'] = default_static_storage
+        options['destination_storage'] = get_storage_class(settings.STATICFILES_STORAGE)()
         try:
-            destination_paths = utils.get_files(default_static_storage, ignore_patterns)
+            destination_paths = utils.get_files(options['destination_storage'], ignore_patterns)
         except OSError:
             # The destination storage location may not exist yet. It'll get
             # created when the first file is copied.
             destination_paths = []
         options['destination_paths'] = destination_paths
         try:
-            default_static_storage.path('')
+            options['destination_storage'].path('')
             destination_local = True
         except NotImplementedError:
             destination_local = False

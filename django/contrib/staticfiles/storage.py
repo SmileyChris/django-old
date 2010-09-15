@@ -29,5 +29,4 @@ class DefaultStaticStorage(LazyObject):
     def _setup(self):
         self._wrapped = get_storage_class(settings.STATICFILES_STORAGE)()
 
-
 default_static_storage = DefaultStaticStorage()

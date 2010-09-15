@@ -105,11 +105,11 @@ class StorageFinder(BaseFinder):
     """
     A static files finder that uses the default storage backend.
     """
-    static_storage = None
+    static_storage = default_storage
 
-    def __init__(self, *args, **kwargs):
-        if self.static_storage is None:
-            self.static_storage = default_storage
+    def __init__(self, storage=None, *args, **kwargs):
+        if storage is not None:
+            self.static_storage = storage
         super(StorageFinder, self).__init__(*args, **kwargs)
 
     def find(self, path, all=False):
