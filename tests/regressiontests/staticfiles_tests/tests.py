@@ -61,7 +61,7 @@ class BaseFileResolutionTests:
     """
     Tests shared by all file-resolving features (build_static,
     find_static, and static serve view).
-    
+
     This relies on the asserts defined in UtilityAssertsTestCase, but
     is separated because some test cases need those asserts without
     all these tests.
@@ -70,10 +70,10 @@ class BaseFileResolutionTests:
     def test_staticfiles_dirs(self):
         """
         Can find a file in a STATICFILES_DIRS directory.
-        
+
         """
         self.assertFileContains('test.txt', 'Can we find')
-            
+
     def test_staticfiles_dirs_subdir(self):
         """
         Can find a file in a subdirectory of a STATICFILES_DIRS
@@ -81,7 +81,7 @@ class BaseFileResolutionTests:
 
         """
         self.assertFileContains('subdir/test.txt', 'Can we find')
-            
+
     def test_staticfiles_dirs_priority(self):
         """
         File in STATICFILES_DIRS has priority over file in app.
@@ -92,7 +92,7 @@ class BaseFileResolutionTests:
     def test_app_files(self):
         """
         Can find a file in an app media/ directory.
-        
+
         """
         self.assertFileContains('test/file1.txt', 'file1 in the app dir')
 
@@ -259,11 +259,11 @@ if sys.platform != 'win32':
     class TestBuildStaticLinks(BuildStaticTestCase, FakeSettingsMixin):
         """
         Test ``--link`` option for ``build_static`` management command.
-        
+
         Note that by inheriting ``BaseFileResolutionTests`` we repeat all
         the standard file resolving tests here, to make sure using
         ``--link`` does not change the file-selection semantics.
-        
+
         """
         def setUp(self):
             self.fake_settings()
@@ -279,7 +279,7 @@ if sys.platform != 'win32':
         def test_links_created(self):
             """
             With ``--link``, symbolic links are created.
-            
+
             """
             self.failUnless(os.path.islink(os.path.join(self.root, 'test.txt')))
 
