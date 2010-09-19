@@ -17,6 +17,10 @@ class BaseFinder(object):
         """
         Given a relative file path this ought to find an
         absolute file path.
+
+        If the ``all`` parameter is ``False`` (default) only
+        the first found file path will be returned; if set
+        to ``True`` a list of all found files paths is returned.
         """
         raise NotImplementedError("Finder subclasses need to implement find()")
 
