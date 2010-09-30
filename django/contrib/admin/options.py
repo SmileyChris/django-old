@@ -11,7 +11,7 @@ from django.views.decorators.csrf import csrf_protect
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models, transaction
 from django.db.models.fields import BLANK_CHOICE_DASH
-from django.http import Http404, HttpResponse, HttpResponseRedirect
+from django.http import Http404, HttpResponse, HttpResponseRedirect, QueryDict
 from django.shortcuts import get_object_or_404, render_to_response
 from django.utils.decorators import method_decorator
 from django.utils.datastructures import SortedDict
@@ -639,6 +639,30 @@ class ModelAdmin(BaseModelAdmin):
             "admin/change_form.html"
         ], context, context_instance=context_instance)
 
+    def url_with_querystring(self, request, url=None):
+        """
+        Returns a URL with the query string preserved from the current request.
+        """
+        if url is None:
+            url = request.path
+        querystring = request.GET.copy()
+
+        # If the new URL has an existing query string, set (or override
+        # existing) values with the new ones explicitly provided.
+        if '?' in url:
+            url, new_qs = url.split('?', 1)
+            for key, value in QueryDict(new_qs):
+                querystring.setlist(key, value)
+
+        # Preserve the admin's "_popup" variable which may have originate in
+        # the POST QueryDict.
+        if '_popup' in request.POST:
+            querystring['_popup'] = 1
+
+        if querystring:
+            url = '%s?%s' % (url, querystring.urlencode())
+        return url
+
     def response_add(self, request, obj, post_url_continue='../%s/'):
         """
         Determines the HttpResponse for the add_view stage.
@@ -649,55 +673,50 @@ class ModelAdmin(BaseModelAdmin):
         msg = _('The %(name)s "%(obj)s" was added successfully.') % {'name': force_unicode(opts.verbose_name), 'obj': force_unicode(obj)}
         # Here, we distinguish between different save types by checking for
         # the presence of keys in request.POST.
-        if request.POST.has_key("_continue"):
+        if '_continue' in request.POST or '_saveasnew' in request.POST:
             self.message_user(request, msg + ' ' + _("You may edit it again below."))
-            if request.POST.has_key("_popup"):
-                post_url_continue += "?_popup=1"
-            return HttpResponseRedirect(post_url_continue % pk_value)
-
-        if request.POST.has_key("_popup"):
+            url = self.url_with_querystring(request,
+                                            post_url_continue % pk_value)
+        elif '_popup' in request.POST:
             return HttpResponse('<script type="text/javascript">opener.dismissAddAnotherPopup(window, "%s", "%s");</script>' % \
                 # escape() calls force_unicode.
                 (escape(pk_value), escape(obj)))
-        elif request.POST.has_key("_addanother"):
+        elif '_addanother' in request.POST:
             self.message_user(request, msg + ' ' + (_("You may add another %s below.") % force_unicode(opts.verbose_name)))
-            return HttpResponseRedirect(request.path)
+            url = self.url_with_querystring(request)
         else:
             self.message_user(request, msg)
-
             # Figure out where to redirect. If the user has change permission,
             # redirect to the change-list page for this object. Otherwise,
             # redirect to the admin index.
             if self.has_change_permission(request, None):
-                post_url = '../'
+                url = '../'
             else:
-                post_url = '../../../'
-            return HttpResponseRedirect(post_url)
+                url = '../../../'
+        return HttpResponseRedirect(url)
 
     def response_change(self, request, obj):
         """
         Determines the HttpResponse for the change_view stage.
         """
         opts = obj._meta
-        pk_value = obj._get_pk_val()
 
         msg = _('The %(name)s "%(obj)s" was changed successfully.') % {'name': force_unicode(opts.verbose_name), 'obj': force_unicode(obj)}
-        if request.POST.has_key("_continue"):
+        if '_continue' in request.POST:
             self.message_user(request, msg + ' ' + _("You may edit it again below."))
-            if request.REQUEST.has_key('_popup'):
-                return HttpResponseRedirect(request.path + "?_popup=1")
-            else:
-                return HttpResponseRedirect(request.path)
-        elif request.POST.has_key("_saveasnew"):
-            msg = _('The %(name)s "%(obj)s" was added successfully. You may edit it again below.') % {'name': force_unicode(opts.verbose_name), 'obj': obj}
-            self.message_user(request, msg)
-            return HttpResponseRedirect("../%s/" % pk_value)
-        elif request.POST.has_key("_addanother"):
+            url = self.url_with_querystring(request)
+        elif '_popup' in request.POST:
+            pk_value = obj._get_pk_val()
+            return HttpResponse('<script type="text/javascript">opener.dismissAddAnotherPopup(window, "%s", "%s");</script>' % \
+                # escape() calls force_unicode.
+                (escape(pk_value), escape(obj)))
+        elif '_addanother' in request.POST:
             self.message_user(request, msg + ' ' + (_("You may add another %s below.") % force_unicode(opts.verbose_name)))
-            return HttpResponseRedirect("../add/")
+            url = self.url_with_querystring(request, "../add/")
         else:
             self.message_user(request, msg)
-            return HttpResponseRedirect("../")
+            url = "../"
+        return HttpResponseRedirect(url)
 
     def response_action(self, request, queryset):
         """
@@ -794,7 +813,7 @@ class ModelAdmin(BaseModelAdmin):
                     prefix = "%s-%s" % (prefix, prefixes[prefix])
                 formset = FormSet(data=request.POST, files=request.FILES,
                                   instance=new_object,
-                                  save_as_new=request.POST.has_key("_saveasnew"),
+                                  save_as_new='_saveasnew' in request.POST,
                                   prefix=prefix, queryset=inline.queryset(request))
                 formsets.append(formset)
             if all_valid(formsets) and form_validated:
@@ -845,7 +864,7 @@ class ModelAdmin(BaseModelAdmin):
         context = {
             'title': _('Add %s') % force_unicode(opts.verbose_name),
             'adminform': adminForm,
-            'is_popup': request.REQUEST.has_key('_popup'),
+            'is_popup': '_popup' in request.REQUEST,
             'show_delete': False,
             'media': mark_safe(media),
             'inline_admin_formsets': inline_admin_formsets,
@@ -871,7 +890,7 @@ class ModelAdmin(BaseModelAdmin):
         if obj is None:
             raise Http404(_('%(name)s object with primary key %(key)r does not exist.') % {'name': force_unicode(opts.verbose_name), 'key': escape(object_id)})
 
-        if request.method == 'POST' and request.POST.has_key("_saveasnew"):
+        if request.method == 'POST' and '_saveasnew' in request.POST:
             return self.add_view(request, form_url='../add/')
 
         ModelForm = self.get_form(request, obj)
@@ -938,7 +957,7 @@ class ModelAdmin(BaseModelAdmin):
             'adminform': adminForm,
             'object_id': object_id,
             'original': obj,
-            'is_popup': request.REQUEST.has_key('_popup'),
+            'is_popup': '_popup' in request.REQUEST,
             'media': mark_safe(media),
             'inline_admin_formsets': inline_admin_formsets,
             'errors': helpers.AdminErrorList(form, formsets),

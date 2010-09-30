@@ -2,6 +2,7 @@
 
 import re
 import datetime
+import urlparse
 from django.conf import settings
 from django.core.files import temp as tempfile
 from django.contrib.auth import admin # Register auth models with the admin.
@@ -1659,6 +1660,109 @@ class AdminCustomQuerysetTest(TestCase):
                 self.assertEqual(response.status_code, 200)
             else:
                 self.assertEqual(response.status_code, 404)
+
+
+class AdminPreserveQSTest(TestCase):
+    """
+    Neither adding nor changing a model will preserve the request query string
+    after a redirection if the standard "save" button is used within the admin.
+    """
+    action = None
+    preserves_qs = False
+    fixtures = ['admin-views-users.xml']
+
+    def setUp(self):
+        self.client.login(username='super', password='secret')
+        self.data = {'title': "I Could Go Anywhere", 'content': "Versatile"}
+        article = Article.objects.create(date=datetime.datetime.now(),
+                                         **self.data)
+        self.data.update({'date_0': u"2008-03-18", 'date_1': u"11:54:58"})
+        if self.action:
+            self.data[self.action] = True
+        self.pk = article.id
+
+    def check_redirect(self, response):
+        self.assertEqual(response.status_code, 302)
+        location = urlparse.urlparse(response['Location'])
+        return urlparse.parse_qs(location.query)
+
+    def test_response_add(self):
+        url = '/test_admin/admin/admin_views/article/add/'
+
+        response = self.client.post('%s?test=1' % url, self.data)
+        parsed_query_string = self.check_redirect(response)
+        if self.preserves_qs:
+            self.assertTrue('test' in parsed_query_string)
+        else:
+            self.assertFalse('test' in parsed_query_string)
+
+        # Test the popup redirection.
+        self.data['_popup'] = 1
+        response = self.client.post(url, self.data)
+        if self.preserves_qs:
+            parsed_query_string = self.check_redirect(response)
+            self.assertTrue('_popup' in parsed_query_string)
+        else:
+            self.assertContains(response,
+                '<script type="text/javascript">opener.dismissAddAnotherPopup')
+
+        # Test the popup redirection togethre with 2 other GET parameters.
+        response = self.client.post('%s?test=1&extra=1' % url, self.data)
+        if self.preserves_qs:
+            parsed_query_string = self.check_redirect(response)
+            self.assertTrue('test' in parsed_query_string)
+            self.assertTrue('extra' in parsed_query_string)
+            self.assertTrue('_popup' in parsed_query_string)
+        else:
+            self.assertContains(response,
+                '<script type="text/javascript">opener.dismissAddAnotherPopup')
+
+    def test_response_change(self):
+        url = '/test_admin/admin/admin_views/article/%d/' % self.pk
+
+        response = self.client.post('%s?test=1' % url, self.data)
+        parsed_query_string = self.check_redirect(response)
+        if self.preserves_qs:
+            self.assertTrue('test' in parsed_query_string)
+        else:
+            self.assertFalse('test' in parsed_query_string)
+
+        response = self.client.post(url, self.data)
+        parsed_query_string = self.check_redirect(response)
+        self.assertFalse('test' in parsed_query_string)
+
+
+class AdminPreserveQSOnContinueTest(AdminPreserveQSTest):
+    """
+    Adding or changing a model should preserve the request query string after
+    the redirection if the "save and continue" button is used within the admin
+    (Ticket #12241).
+    """
+    action = '_continue'
+    preserves_qs = True
+
+
+class AdminPreserveQSOnAddAnotherTest(AdminPreserveQSTest):
+    """
+    Adding or changing a model should preserve the request query string after
+    the redirection if the "add another" button is used within the admin
+    (Ticket #12241).
+    """
+    action = '_addanother'
+    preserves_qs = True
+
+
+class AdminPreserveQSOnSaveAsNewTest(AdminPreserveQSTest):
+    """
+    Adding or changing a model should preserve the request query string after
+    the redirection if the "save as new" button is used within the admin
+    (Ticket #12241).
+    
+    Technically, only the response_change
+    """
+    action = '_saveasnew'
+    preserves_qs = True
+
 
 class AdminInlineFileUploadTest(TestCase):
     fixtures = ['admin-views-users.xml', 'admin-views-actions.xml']
