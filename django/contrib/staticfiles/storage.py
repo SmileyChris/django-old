@@ -1,6 +1,6 @@
 import os, posixpath
 
-from django.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage, get_storage_class
 from django.utils.functional import LazyObject
