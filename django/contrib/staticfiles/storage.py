@@ -30,10 +30,3 @@ class StaticFilesStorage(FileSystemStorage):
                 "without having set the STATICFILES_URL setting. Set it to "
                 "URL that handles the files served from STATICFILES_ROOT.")
         super(StaticFilesStorage, self).__init__(location, base_url, *args, **kwargs)
-
-
-class DefaultStaticStorage(LazyObject):
-    def _setup(self):
-        self._wrapped = get_storage_class(settings.STATICFILES_STORAGE)()
-
-default_static_storage = DefaultStaticStorage()
