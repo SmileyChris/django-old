@@ -19,7 +19,6 @@ TEST_ROOT = os.path.dirname(__file__)
 class StaticFilesTestCase(TestCase):
     """
     Test case with a couple utility assertions.
-
     """
     def setUp(self):
         self.old_staticfiles_url = settings.STATICFILES_URL
@@ -78,7 +77,6 @@ class BuildStaticTestCase(StaticFilesTestCase):
     This relies on the asserts defined in UtilityAssertsTestCase, but
     is separated because some test cases need those asserts without
     all these tests.
-
     """
     def setUp(self):
         super(BuildStaticTestCase, self).setUp()
@@ -137,7 +135,6 @@ class TestDefaults:
 class TestBuildStatic(BuildStaticTestCase, TestDefaults):
     """
     Test ``build_static`` management command.
-
     """
     def test_ignore(self):
         """
@@ -158,7 +155,6 @@ class TestBuildStaticExcludeNoDefaultIgnore(BuildStaticTestCase):
     """
     Test ``--exclude-dirs`` and ``--no-default-ignore`` options for
     ``build_static`` management command.
-
     """
     def run_build_static(self):
         super(TestBuildStaticExcludeNoDefaultIgnore, self).run_build_static(
@@ -186,7 +182,6 @@ class TestBuildStaticExcludeNoDefaultIgnore(BuildStaticTestCase):
 class TestBuildStaticDryRun(BuildStaticTestCase):
     """
     Test ``--dry-run`` option for ``build_static`` management command.
-
     """
     def run_build_static(self):
         super(TestBuildStaticDryRun, self).run_build_static(dry_run=True)
@@ -194,7 +189,6 @@ class TestBuildStaticDryRun(BuildStaticTestCase):
     def test_no_files_created(self):
         """
         With --dry-run, no files created in destination dir.
-
         """
         self.assertEquals(os.listdir(build_static_location), [])
 
@@ -207,9 +201,7 @@ if sys.platform != 'win32':
         Note that by inheriting ``BaseFileResolutionTests`` we repeat all
         the standard file resolving tests here, to make sure using
         ``--link`` does not change the file-selection semantics.
-
         """
-
         def run_build_static(self):
             super(TestBuildStaticLinks, self).run_build_static(link=True)
 
@@ -224,7 +216,6 @@ if sys.platform != 'win32':
 class TestServeStatic(StaticFilesTestCase):
     """
     Test static asset serving view.
-
     """
     urls = "regressiontests.staticfiles_tests.urls"
 
@@ -251,7 +242,6 @@ class TestServeStatic(StaticFilesTestCase):
 class TestServeMedia(TestServeStatic):
     """
     Test serving media from MEDIA_URL.
-
     """
     urls = "regressiontests.staticfiles_tests.urls"
 
@@ -265,7 +255,6 @@ class TestServeMedia(TestServeStatic):
 class TestServeAdminMedia(TestServeStatic):
     """
     Test serving media from django.contrib.admin.
-
     """
     urls = "regressiontests.staticfiles_tests.urls"
 
