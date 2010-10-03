@@ -4,8 +4,11 @@ from django.db import models
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.importlib import import_module
 from django.core.files.storage import default_storage
+from django.utils.functional import memoize
 
 from django.contrib.staticfiles import utils
+
+_finders = {}
 
 
 class BaseFinder(object):
@@ -149,7 +152,7 @@ def find(path, all=False):
     """
     matches = []
     for finder_path in settings.STATICFILES_FINDERS:
-        finder = get_finder(finder_path)()
+        finder = get_finder(finder_path)
         result = finder.find(path, all=all)
         if not all and result:
             return result
@@ -164,7 +167,7 @@ def find(path, all=False):
     return all and [] or None
 
 
-def get_finder(import_path):
+def _get_finder(import_path):
     """
     Imports the message storage class described by import_path, where
     import_path is the full Python path to the class.
@@ -187,4 +190,6 @@ def get_finder(import_path):
     if not issubclass(cls, BaseFinder):
         raise ImproperlyConfigured('Finder "%s" is not a subclass of "%s"' %
                                    (cls, BaseFinder))
-    return cls
+    return cls()
+
+get_finder = memoize(_get_finder, _finders, 1)

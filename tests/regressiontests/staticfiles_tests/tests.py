@@ -294,8 +294,9 @@ class TestMiscFinder(TestCase):
     A few misc finder tests.
     """
     def test_get_finder(self):
-        self.assertEquals(finders.FileSystemFinder,
-            finders.get_finder("django.contrib.staticfiles.finders.FileSystemFinder"))
+        self.assertTrue(isinstance(finders.get_finder(
+            "django.contrib.staticfiles.finders.FileSystemFinder"),
+            finders.FileSystemFinder))
         self.assertRaises(ImproperlyConfigured,
             finders.get_finder, "django.contrib.staticfiles.finders.FooBarFinder")
         self.assertRaises(ImproperlyConfigured,
