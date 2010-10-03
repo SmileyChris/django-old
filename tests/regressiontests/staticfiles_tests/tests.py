@@ -27,6 +27,7 @@ class StaticFilesTestCase(TestCase):
         self.old_installed_apps = settings.INSTALLED_APPS
         self.old_media_root = settings.MEDIA_ROOT
         self.old_media_url = settings.MEDIA_URL
+        self.old_admin_media_prefix = settings.ADMIN_MEDIA_PREFIX
 
         # We have to load these apps to test staticfiles.
         load_app('regressiontests.staticfiles_tests.apps.test')
@@ -44,6 +45,7 @@ class StaticFilesTestCase(TestCase):
     def tearDown(self):
         settings.MEDIA_ROOT = self.old_media_root
         settings.MEDIA_URL = self.old_media_url
+        settings.ADMIN_MEDIA_PREFIX = self.old_admin_media_prefix
         settings.STATICFILES_ROOT = self.old_staticfiles_root
         settings.STATICFILES_URL = self.old_staticfiles_url
         settings.STATICFILES_DIRS = self.old_staticfiles_dirs
