@@ -556,7 +556,7 @@ STATICFILES_ROOT = ''
 
 # URL that handles the static files served from STATICFILES_ROOT.
 # Example: "http://media.lawrence.com/static/"
-STATICFILES_URL = ''
+STATICFILES_URL = '/static/'
 
 # A tuple of two-tuples with a name and the path of additional directories
 # which hold static files and should be taken into account during resolving
@@ -576,4 +576,4 @@ STATICFILES_FINDERS = (
 # URL prefix for admin media -- CSS, JavaScript and images. Make sure to use a
 # trailing slash.
 # Examples: "http://foo.com/media/admin/", "/media/admin/".
-ADMIN_MEDIA_PREFIX = '/media/static/admin/'
+ADMIN_MEDIA_PREFIX = '/static/admin/'

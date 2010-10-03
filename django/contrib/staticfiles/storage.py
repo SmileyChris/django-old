@@ -13,14 +13,11 @@ class StaticFilesStorage(FileSystemStorage):
     The defaults for ``location`` and ``base_url`` are
     ``STATICFILES_ROOT`` and ``STATICFILES_URL``.
     """
-    staticfiles_location = settings.STATICFILES_ROOT
-    staticfiles_base_url = settings.STATICFILES_URL
-
     def __init__(self, location=None, base_url=None, *args, **kwargs):
         if location is None:
-            location = self.staticfiles_location
+            location = settings.STATICFILES_ROOT
         if base_url is None:
-            base_url = self.staticfiles_base_url
+            base_url = settings.STATICFILES_URL
         if not location:
             raise ImproperlyConfigured("You're using the staticfiles app "
                 "without having set the STATICFILES_ROOT setting. Set it to "

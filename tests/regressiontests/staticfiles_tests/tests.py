@@ -31,23 +31,23 @@ class StaticFilesTestCase(TestCase):
         # We have to load these apps to test staticfiles.
         load_app('regressiontests.staticfiles_tests.apps.test')
         load_app('regressiontests.staticfiles_tests.apps.no_label')
-
-        settings.MEDIA_ROOT = os.path.join(TEST_ROOT, 'project', 'site_media', 'media')
+        site_media = os.path.join(TEST_ROOT, 'project', 'site_media')
+        settings.MEDIA_ROOT =  os.path.join(site_media, 'media')
         settings.MEDIA_URL = '/media/'
-        settings.STATICFILES_ROOT = os.path.join(settings.MEDIA_ROOT, 'static')
-        settings.STATICFILES_URL = '/media/static/'
         settings.ADMIN_MEDIA_PREFIX = posixpath.join(settings.STATICFILES_URL, 'admin/')
+        settings.STATICFILES_ROOT = os.path.join(site_media, 'static')
+        settings.STATICFILES_URL = '/static/'
         settings.STATICFILES_DIRS = (
             os.path.join(TEST_ROOT, 'project', 'documents'),
         )
 
     def tearDown(self):
-        settings.STATICFILES_URL = self.old_staticfiles_url
-        settings.STATICFILES_ROOT = self.old_staticfiles_root
-        settings.STATICFILES_DIRS = self.old_staticfiles_dirs
-        settings.INSTALLED_APPS = self.old_installed_apps
         settings.MEDIA_ROOT = self.old_media_root
         settings.MEDIA_URL = self.old_media_url
+        settings.STATICFILES_ROOT = self.old_staticfiles_root
+        settings.STATICFILES_URL = self.old_staticfiles_url
+        settings.STATICFILES_DIRS = self.old_staticfiles_dirs
+        settings.INSTALLED_APPS = self.old_installed_apps
 
     def assertFileContains(self, filepath, text):
         self.failUnless(text in self._get_file(filepath),
@@ -61,12 +61,11 @@ build_static_location = None
 
 class TestingStaticFilesStorage(storage.StaticFilesStorage):
 
-    @property
-    def staticfiles_location(self):
+    def __init__(self, location=None, base_url=None, *args, **kwargs):
         global build_static_location
-        build_static_location = tempfile.mkdtemp()
+        location = build_static_location = tempfile.mkdtemp()
         settings.STATICFILES_ROOT = build_static_location
-        return build_static_location
+        super(TestingStaticFilesStorage, self).__init__(location, base_url, *args, **kwargs)
 
 
 class BuildStaticTestCase(StaticFilesTestCase):
