@@ -228,18 +228,6 @@ class TestServeStatic(StaticFilesTestCase):
     def assertFileNotFound(self, filepath):
         self.assertEquals(self._response(filepath).status_code, 404)
 
-class TestServeMedia(TestServeStatic):
-    """
-    Test serving media from MEDIA_URL.
-    """
-    urls = "regressiontests.staticfiles_tests.urls"
-
-    def test_serve_media(self):
-        media_file = posixpath.join(
-            settings.MEDIA_URL, 'media-file.txt')
-        response = self.client.get(media_file)
-        self.assertContains(response, 'Media file.')
-
 
 class TestServeAdminMedia(TestServeStatic):
     """
