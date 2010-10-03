@@ -99,7 +99,7 @@ class BuildStaticTestCase(StaticFilesTestCase):
         return open(filepath).read()
 
 
-class TestDefaults:
+class TestDefaults(object):
     def test_staticfiles_dirs(self):
         """
         Can find a file in a STATICFILES_DIRS directory.
@@ -239,7 +239,7 @@ class TestServeAdminMedia(TestServeStatic):
         self.assertContains(response, 'body')
 
 
-class FinderTestCase:
+class FinderTestCase(object):
     """
     Base finder test mixin
     """
