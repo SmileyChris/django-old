@@ -228,16 +228,6 @@ class TestServeStatic(StaticFilesTestCase):
     def assertFileNotFound(self, filepath):
         self.assertEquals(self._response(filepath).status_code, 404)
 
-    def setUp(self):
-        super(TestServeStatic, self).setUp()
-        # this is needed to be sure the urls.py use the correct settings.
-        from django.contrib.staticfiles import urls as contrib_urls
-        contrib_urls.urlpatterns = []
-        contrib_urls.urlpatterns = contrib_urls.staticfiles_urlpatterns()
-        from regressiontests.staticfiles_tests import urls as test_urls
-        test_urls.urlpatterns = test_urls.staticfiles_urlpatterns()
-
-
 class TestServeMedia(TestServeStatic):
     """
     Test serving media from MEDIA_URL.
@@ -255,25 +245,11 @@ class TestServeAdminMedia(TestServeStatic):
     """
     Test serving media from django.contrib.admin.
     """
-    urls = "regressiontests.staticfiles_tests.urls"
-
     def test_serve_admin_media(self):
         media_file = posixpath.join(
             settings.ADMIN_MEDIA_PREFIX, 'css/base.css')
         response = self.client.get(media_file)
         self.assertContains(response, 'body')
-
-
-class TestServeStaticBackwardCompat(TestServeStatic):
-    urls = "regressiontests.staticfiles_tests.urls_backward_compat"
-
-
-class TestServeMediaBackwardCompat(TestServeMedia):
-    urls = "regressiontests.staticfiles_tests.urls_backward_compat"
-
-
-class TestServeAdminMediaBackwardCompat(TestServeAdminMedia):
-    urls = "regressiontests.staticfiles_tests.urls_backward_compat"
 
 
 class FinderTestCase:
