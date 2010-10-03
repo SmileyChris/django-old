@@ -59,14 +59,11 @@ class StaticFilesTestCase(TestCase):
         self.assertRaises(IOError, self._get_file, filepath)
 
 
-build_static_location = None
-
 class TestingStaticFilesStorage(storage.StaticFilesStorage):
 
     def __init__(self, location=None, base_url=None, *args, **kwargs):
-        global build_static_location
-        location = build_static_location = tempfile.mkdtemp()
-        settings.STATICFILES_ROOT = build_static_location
+        location = tempfile.mkdtemp()
+        settings.STATICFILES_ROOT = location
         super(TestingStaticFilesStorage, self).__init__(location, base_url, *args, **kwargs)
 
 
@@ -87,7 +84,7 @@ class BuildStaticTestCase(StaticFilesTestCase):
         self.run_build_static()
 
     def tearDown(self):
-        shutil.rmtree(build_static_location)
+        shutil.rmtree(settings.STATICFILES_ROOT)
         settings.STATICFILES_ROOT = self.old_root
         settings.STATICFILES_STORAGE = self.old_staticfiles_storage
         super(BuildStaticTestCase, self).tearDown()
@@ -98,7 +95,7 @@ class BuildStaticTestCase(StaticFilesTestCase):
 
     def _get_file(self, filepath):
         assert filepath, 'filepath is empty.'
-        filepath = os.path.join(build_static_location, filepath)
+        filepath = os.path.join(settings.STATICFILES_ROOT, filepath)
         return open(filepath).read()
 
 
@@ -191,7 +188,7 @@ class TestBuildStaticDryRun(BuildStaticTestCase):
         """
         With --dry-run, no files created in destination dir.
         """
-        self.assertEquals(os.listdir(build_static_location), [])
+        self.assertEquals(os.listdir(settings.STATICFILES_ROOT), [])
 
 
 if sys.platform != 'win32':
@@ -211,7 +208,7 @@ if sys.platform != 'win32':
             With ``--link``, symbolic links are created.
 
             """
-            self.failUnless(os.path.islink(os.path.join(build_static_location, 'test.txt')))
+            self.failUnless(os.path.islink(os.path.join(settings.STATICFILES_ROOT, 'test.txt')))
 
 
 class TestServeStatic(StaticFilesTestCase):
