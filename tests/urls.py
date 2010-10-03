@@ -42,6 +42,6 @@ urlpatterns = patterns('',
     # special headers views
     (r'special_headers/', include('regressiontests.special_headers.urls')),
 
-    # static media file handling
-    (r'site_media/static/', include('django.contrib.staticfiles.urls')),
+    # static files handling
+    (r'^', include('regressiontests.staticfiles_tests.urls')),
 )
