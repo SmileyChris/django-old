@@ -473,6 +473,8 @@ LOGOUT_URL = '/accounts/logout/'
 
 LOGIN_REDIRECT_URL = '/accounts/profile/'
 
+REDIRECT_FIELD_NAME = 'next'
+
 # The number of days a password reset link is valid for
 PASSWORD_RESET_TIMEOUT_DAYS = 3
 
