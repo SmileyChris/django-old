@@ -22,10 +22,10 @@ def user_passes_test(test_func, login_url=None, redirect_field_name=REDIRECT_FIE
             if test_func(request.user):
                 return view_func(request, *args, **kwargs)
             path = request.build_absolute_uri()
-            login_url = login_url or settings.LOGIN_URL
             # If the login url is the same scheme and net location then just
             # use the path as the "next" url.
-            login_scheme, login_netloc = urlparse.urlparse(login_url)[:2]
+            login_scheme, login_netloc = urlparse.urlparse(login_url or
+                                                        settings.LOGIN_URL)[:2]
             current_scheme, current_netloc = urlparse.urlparse(path)[:2]
             if ((not login_scheme or login_scheme == current_scheme) and
                 (not login_netloc or login_netloc == current_netloc)):
