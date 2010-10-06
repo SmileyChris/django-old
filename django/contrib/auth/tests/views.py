@@ -10,7 +10,6 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.core import mail
 from django.core.urlresolvers import reverse
-from django.utils.http import urlencode
 from django.http import QueryDict
 
 class AuthViewsTestCase(TestCase):
@@ -257,6 +256,14 @@ class LoginURLSettings(AuthViewsTestCase):
         self.assertEquals(response.status_code, 302)
         return response['Location']
 
+    def test_standard_login_url(self):
+        login_url = '/login/'
+        login_required_url = self.get_login_required_url(login_url)
+        querystring = QueryDict('', mutable=True)
+        querystring['next'] = '/login_required/'
+        self.assertEqual(login_required_url,
+             'http://testserver%s?%s' % (login_url, querystring.urlencode()))
+
     def test_remote_login_url(self):
         login_url = 'http://remote.example.com/login'
         login_required_url = self.get_login_required_url(login_url)
@@ -273,6 +280,22 @@ class LoginURLSettings(AuthViewsTestCase):
         self.assertEqual(login_required_url,
                          '%s?%s' % (login_url, querystring.urlencode()))
 
+    def test_login_url_with_querystring(self):
+        login_url = '/login/?pretty=1'
+        login_required_url = self.get_login_required_url(login_url)
+        querystring = QueryDict('pretty=1', mutable=True)
+        querystring['next'] = '/login_required/'
+        self.assertEqual(login_required_url, 'http://testserver/login/?%s' %
+                         querystring.urlencode())
+
+    def test_remote_login_url_with_next_querystring(self):
+        login_url = 'http://remote.example.com/login/'
+        login_required_url = self.get_login_required_url('%s?next=/default/' %
+                                                         login_url)
+        querystring = QueryDict('', mutable=True)
+        querystring['next'] = 'http://testserver/login_required/'
+        self.assertEqual(login_required_url, '%s?%s' % (login_url,
+                                                    querystring.urlencode()))
         
 class LogoutTest(AuthViewsTestCase):
     urls = 'django.contrib.auth.tests.urls'
