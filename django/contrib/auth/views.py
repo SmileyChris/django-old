@@ -31,16 +31,16 @@ def login(request, template_name='registration/login.html',
     if request.method == "POST":
         form = authentication_form(data=request.POST)
         if form.is_valid():
+            netloc = urlparse.urlparse(redirect_to)[1]
+
             # Light security check -- make sure redirect_to isn't garbage.
             if not redirect_to or ' ' in redirect_to:
                 redirect_to = settings.LOGIN_REDIRECT_URL
 
-            # Heavier security check -- redirects to http://example.com should
-            # not be allowed, but things like /view/?param=http://example.com
-            # should be allowed. This regex checks if there is a '//' *before* a
-            # question mark.
-            elif '//' in redirect_to and re.match(r'[^\?]*//', redirect_to):
-                    redirect_to = settings.LOGIN_REDIRECT_URL
+            # Heavier security check -- don't allow redirection to a different
+            # host.
+            elif netloc and netloc != request.get_host():
+                redirect_to = settings.LOGIN_REDIRECT_URL
 
             # Okay, security checks complete. Log the user in.
             auth_login(request, form.get_user())
@@ -96,9 +96,10 @@ def redirect_to_login(next, login_url=None,
         login_url = settings.LOGIN_URL
 
     login_url_parts = list(urlparse.urlparse(login_url))
-    querystring = QueryDict(login_url[4], mutable=True)
-    querystring[redirect_field_name] = next
-    login_url_parts[4] = querystring.urlencode()
+    if redirect_field_name:
+        querystring = QueryDict(login_url_parts[4], mutable=True)
+        querystring[redirect_field_name] = next
+        login_url_parts[4] = querystring.urlencode()
 
     return HttpResponseRedirect(urlparse.urlunparse(login_url_parts))
 

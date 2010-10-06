@@ -1067,6 +1067,21 @@ Default: ``'/accounts/login/'``
 The URL where requests are redirected for login, especially when using the
 :func:`~django.contrib.auth.decorators.login_required` decorator.
 
+.. setting:: LOGIN_URL_NEXT_ARG
+
+LOGIN_URL_NEXT_ARG
+------------------
+
+.. versionadded:: 1.3
+
+Default: ``'next'``
+
+The argument used when building the "next url" querystring for the login URL.
+For example, with the default settings an anonymous user accessing a URL of
+``/secure_page/`` which maps to a view decorated with
+:func:`~django.contrib.auth.decorators.login_required` will be redirected to:
+``/accounts/login/?next=/secure_page/``.
+
 .. setting:: LOGOUT_URL
 
 LOGOUT_URL

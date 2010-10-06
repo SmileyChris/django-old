@@ -5,10 +5,7 @@ except ImportError:
     from django.utils.functional import wraps  # Python 2.4 fallback.
 
 from django.contrib.auth import REDIRECT_FIELD_NAME
-from django.contrib.auth.views import redirect_to_login
-from django.http import HttpResponseRedirect
 from django.utils.decorators import available_attrs
-from django.utils.http import urlquote
 
 
 def user_passes_test(test_func, login_url=None, redirect_field_name=REDIRECT_FIELD_NAME):
@@ -34,6 +31,7 @@ def user_passes_test(test_func, login_url=None, redirect_field_name=REDIRECT_FIE
             if ((not login_scheme or login_scheme == current_scheme) and
                 (not login_netloc or login_netloc == current_netloc)):
                 path = request.get_full_path()
+            from django.contrib.auth.views import redirect_to_login
             return redirect_to_login(path, login_url, redirect_field_name)
         return _wrapped_view
     return decorator
