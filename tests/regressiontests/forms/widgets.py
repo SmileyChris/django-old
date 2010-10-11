@@ -463,6 +463,28 @@ over multiple times without getting consumed:
 <option value="4">4</option>
 </select>
 
+Only one option can be selected:
+>>> print w.render('choices', 0, choices=(('0', 'extra'),))
+<select name="choices">
+<option value="0" selected="selected">0</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="0">extra</option>
+</select>
+
+Ensure that it still selects the first element next time round:
+>>> print w.render('choices', 0, choices=(('0', 'extra'),))
+<select name="choices">
+<option value="0" selected="selected">0</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="0">extra</option>
+</select>
+
 Choices can be nested one level in order to create HTML optgroups:
 >>> w.choices=(('outer1', 'Outer 1'), ('Group "1"', (('inner1', 'Inner 1'), ('inner2', 'Inner 2'))))
 >>> print w.render('nestchoice', None)
@@ -673,6 +695,15 @@ False
 True
 >>> w._has_changed([1, 2], [u'1', u'3'])
 True
+
+Multiple options (with the same value) can be selected:
+>>> print w.render('choices', [1], choices=(('1', 'extra'),))
+<select multiple="multiple" name="choices">
+<option value="1" selected="selected">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="1" selected="selected">extra</option>
+</select>
 
 # Choices can be nested one level in order to create HTML optgroups:
 >>> w.choices = (('outer1', 'Outer 1'), ('Group "1"', (('inner1', 'Inner 1'), ('inner2', 'Inner 2'))))
