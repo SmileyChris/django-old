@@ -5,7 +5,7 @@ from optparse import make_option
 
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage, get_storage_class
-from django.core.management.base import CommandError, OptionalAppCommand
+from django.core.management.base import CommandError, OptionalAppCommand, logger
 
 from django.contrib.staticfiles import utils
 
@@ -98,7 +98,6 @@ Type 'yes' to continue, or 'no' to cancel: """)
     def post_handle_apps(self, **options):
         copied_files = options['copied_files']
         symlinked_files = options['symlinked_files']
-        logger = self.get_logger()
         count = len(copied_files) + len(symlinked_files)
         logger.info("%s static file%s built." % (count,
                                                  count != 1 and 's' or ''))
@@ -135,7 +134,6 @@ Type 'yes' to continue, or 'no' to cancel: """)
         """
         destination_storage = options['destination_storage']
         dry_run = options.get('dry_run', False)
-        logger = self.get_logger()
         if destination_prefix:
             destination = '/'.join([destination_prefix, source])
         else:

@@ -13,6 +13,9 @@ import django
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.color import color_style
 from django.utils.encoding import smart_str
+from django.utils.log import getLogger
+
+logger = getLogger('django.core.management')
 
 class CommandError(Exception):
     """
@@ -135,13 +138,7 @@ class BaseCommand(object):
     can_import_settings = True
     requires_model_validation = True
     output_transaction = False # Whether to wrap the output in a "BEGIN; COMMIT;"
-
-    # OMG FIXME -- what is wrong with you? we don't want to use our own logger here, use the real thing man!
-    logger_parent = 'django.core.management.base.commands'
-    logger_name = 'base'
-    logger_handler = logging.StreamHandler()
-    logger_format = '%(message)s'
-    logger_levels = {
+    log_levels = {
         0: logging.ERROR,
         1: logging.INFO,
         2: logging.DEBUG,
@@ -149,11 +146,6 @@ class BaseCommand(object):
 
     def __init__(self):
         self.style = color_style()
-
-    def get_logger(self):
-        parts = [self.logger_parent, self.logger_name]
-        name = '.'.join([part for part in parts if part])
-        return logging.getLogger(name)
 
     def get_version(self):
         """
@@ -217,11 +209,7 @@ class BaseCommand(object):
 
         """
         verbosity = options.get('verbosity', 1)
-        logger = self.get_logger()
-        logger.setLevel(self.logger_levels[int(verbosity)])
-        formatter = logging.Formatter(self.logger_format)
-        self.logger_handler.setFormatter(formatter)
-        logger.addHandler(self.logger_handler)
+        logger.setLevel(self.log_levels[int(verbosity)])
         # Switch to English, because django-admin.py creates database content
         # like permissions, and those shouldn't contain any translations.
         # But only do this if we can assume we have a working settings file,
@@ -255,8 +243,6 @@ class BaseCommand(object):
         except CommandError, e:
             self.stderr.write(smart_str(self.style.ERROR('Error: %s\n' % e)))
             sys.exit(1)
-        finally:
-            logger.removeHandler(self.logger_handler)
 
     def validate(self, app=None, display_num_errors=False):
         """

@@ -1,6 +1,6 @@
 import os
 from optparse import make_option
-from django.core.management.base import LabelCommand
+from django.core.management.base import LabelCommand, logger
 
 from django.contrib.staticfiles import finders
 
@@ -14,7 +14,6 @@ class Command(LabelCommand):
     )
 
     def handle_label(self, media_path, **options):
-        logger = self.get_logger()
         all = options['all']
         result = finders.find(media_path, all=all)
         if not result:
