@@ -1,10 +1,9 @@
 import os
 import urllib
 
-
+from django.conf import settings
 from django.core.handlers.wsgi import WSGIHandler, STATUS_CODE_TEXT
 from django.http import Http404
-from django.conf import settings
 from django.views import static
 
 class StaticFilesHandler(WSGIHandler):

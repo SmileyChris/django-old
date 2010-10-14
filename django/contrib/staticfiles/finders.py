@@ -172,24 +172,19 @@ def _get_finder(import_path):
     Imports the message storage class described by import_path, where
     import_path is the full Python path to the class.
     """
-    try:
-        dot = import_path.rindex('.')
-    except ValueError:
-        raise ImproperlyConfigured("%s isn't a Python path." % import_path)
-    module, classname = import_path[:dot], import_path[dot + 1:]
+    module, attr = import_path.rsplit('.', 1)
     try:
         mod = import_module(module)
     except ImportError, e:
         raise ImproperlyConfigured('Error importing module %s: "%s"' %
                                    (module, e))
     try:
-        cls = getattr(mod, classname)
+        Finder = getattr(mod, attr)
     except AttributeError:
         raise ImproperlyConfigured('Module "%s" does not define a "%s" '
-                                   'class.' % (module, classname))
-    if not issubclass(cls, BaseFinder):
+                                   'class.' % (module, attr))
+    if not issubclass(Finder, BaseFinder):
         raise ImproperlyConfigured('Finder "%s" is not a subclass of "%s"' %
-                                   (cls, BaseFinder))
-    return cls()
-
+                                   (Finder, BaseFinder))
+    return Finder()
 get_finder = memoize(_get_finder, _finders, 1)
