@@ -565,6 +565,10 @@ class FieldsTests(TestCase):
         f = URLField()
         self.assertEqual(u'http://example.com/?some_param=some_value', f.clean('http://example.com?some_param=some_value'))
 
+    def test_urlfield_not_string(self):
+        f = URLField(required=False)
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid URL.']", f.clean, 23)
+
     # BooleanField ################################################################
 
     def test_booleanfield_44(self):
