@@ -6,7 +6,7 @@ from django.utils.importlib import import_module
 
 SESSION_KEY = '_auth_user_id'
 BACKEND_SESSION_KEY = '_auth_user_backend'
-REDIRECT_FIELD_NAME = settings.LOGIN_URL_NEXT_ARG 
+REDIRECT_FIELD_NAME = 'next'
 
 def load_backend(path):
     i = path.rfind('.')

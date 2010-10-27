@@ -28,14 +28,11 @@ class AuthViewsTestCase(TestCase):
         settings.TEMPLATE_DIRS = (
             os.path.join(os.path.dirname(__file__), 'templates'),
         )
-        self.old_LOGIN_URL_NEXT_ARG = settings.LOGIN_URL_NEXT_ARG
-        settings.LOGIN_URL_NEXT_ARG = 'next'
 
     def tearDown(self):
         settings.LANGUAGES = self.old_LANGUAGES
         settings.LANGUAGE_CODE = self.old_LANGUAGE_CODE
         settings.TEMPLATE_DIRS = self.old_TEMPLATE_DIRS
-        settings.LOGIN_URL_NEXT_ARG = self.old_LOGIN_URL_NEXT_ARG
 
     def login(self, password='password'):
         response = self.client.post('/login/', {
