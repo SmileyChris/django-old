@@ -362,6 +362,9 @@ It's not possible to mix a template variable inside a string within ``{% trans
 ``blocktrans`` template tag
 ---------------------------
 
+.. versionchanged:: 1.3
+   New keyword argument format.
+
 Contrarily to the ``trans`` tag, the ``blocktrans`` tag allows you to mark
 complex sentences consisting of literals and variable content for translation
 by making use of placeholders::
@@ -370,35 +373,35 @@ by making use of placeholders::
 
 To translate a template expression -- say, accessing object attributes or
 using template filters -- you need to bind the expression to a local variable
-for use within the translation block. Examples::
+name for use within the translation block. Examples::
 
-    {% blocktrans with article.price as amount %}
+    {% blocktrans with amount=article.price %}
     That will cost $ {{ amount }}.
     {% endblocktrans %}
 
-    {% blocktrans with value|filter as myvar %}
+    {% blocktrans with myvar=value|filter %}
     This will have {{ myvar }} inside.
     {% endblocktrans %}
 
-If you need to bind more than one expression inside a ``blocktrans`` tag,
-separate the pieces with ``and``::
+You can bind more than one expression inside a ``blocktrans`` tag::
 
-    {% blocktrans with book|title as book_t and author|title as author_t %}
+    {% blocktrans with book_t=book|title author_t=author|title %}
     This is {{ book_t }} by {{ author_t }}
     {% endblocktrans %}
 
-This tag also provides for pluralization. To use it:
+This tag is also in charge of handling another functionality: Pluralization.
+To make use of it you should:
 
-    * Designate and bind a counter value with the name ``count``. This value will
+    * Designate a counter name and value by using ``count``, such value will
       be the one used to select the right plural form.
 
     * Specify both the singular and plural forms separating them with the
-      ``{% plural %}`` tag within the ``{% blocktrans %}`` and
-      ``{% endblocktrans %}`` tags.
+      ``{% plural %}`` tag, which appears within ``{% blocktrans %}`` and
+      ``{% endblocktrans %}``.
 
 An example::
 
-    {% blocktrans count list|length as counter %}
+    {% blocktrans count counter=list|length %}
     There is only one {{ name }} object.
     {% plural %}
     There are {{ counter }} {{ name }} objects.
@@ -406,17 +409,20 @@ An example::
 
 A more complex example::
 
-    {% blocktrans with article.price as amount count i.length as years %}
+    {% blocktrans with amount=article.price count years=i.length %}
     That will cost $ {{ amount }} per year.
     {% plural %}
     That will cost $ {{ amount }} per {{ years }} years.
     {% endblocktrans %}
 
 When you both use the pluralization feature and bind values to local variables
-in addition to the counter value, keep in mind that the ``blocktrans``
+in addition to the counter value, have in mind that the ``blocktrans``
 construct is internally converted to an ``ungettext`` call. This means the
 same :ref:`notes regarding ungettext variables <pluralization-var-notes>`
 apply.
+
+.. note:: The previous more verbose format is still supported:
+{% blocktrans with book|title as book_t and author|title as author_t %}
 
 .. _template-translation-vars:
 
