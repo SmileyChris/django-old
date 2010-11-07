@@ -378,3 +378,52 @@ class MailTests(TestCase):
         self.assertEqual(message.from_email, from_email)
         self.assertEqual(message.to, [to_email])
         self.assertTrue(message.message().as_string().startswith('Content-Type: text/plain; charset="utf-8"\nMIME-Version: 1.0\nContent-Transfer-Encoding: quoted-printable\nSubject: Subject\nFrom: =?utf-8?b?ZnLDtm1Aw7bDpMO8LmNvbQ==?=\nTo: =?utf-8?b?dMO2QMO2w6TDvC5jb20=?='))
+
+    def test_formataddr(self):
+        """
+        Check that two-part tuples can be passed as a value to the ``From``
+        header (and that lists of two-part tuples can be passed to the ``To``,
+        and ``Cc`` headers).
+        """
+        message = EmailMessage(
+            subject='Subject', body='Content',
+            from_email = ('From Surname', 'from@example.com'),
+            to = [('Alpha Surname', 'alpha@example.com'),
+                  ('Beta Surname', 'beta@example.com')],
+            cc = [('Gamma Surname', 'gamma@example.com'),
+                  ('Delta Surname', 'delta@example.com')],
+        ).message()
+        self.assertEqual(message['From'], 'From Surname <from@example.com>')
+        self.assertEqual(message['To'], 'Alpha Surname <alpha@example.com>, Beta Surname <beta@example.com>')
+        self.assertEqual(message['Cc'], 'Gamma Surname <gamma@example.com>, Delta Surname <delta@example.com>')
+
+        message = EmailMessage(
+            subject='Subject', body='Reply',
+            from_email = ('Alpha Surname', 'alpha@example.com'),
+            to = ['to@example.com']
+        ).message()
+        self.assertEqual(message['From'], 'Alpha Surname <alpha@example.com>')
+        
+    def test_formataddr_unicode(self):
+        """
+        Similar to :meth:`test_formataddr`, but check that unicode values work
+        correctly.
+        """
+        message = EmailMessage(
+            subject='Subject', body='Content',
+            from_email = ('From Sürname', 'from@example.com'),
+            to = [('Alpha Sürname', 'alpha@example.com'),
+                  ('Beta Sürname', 'beta@example.com')],
+            cc = [('Gamma Sürname', 'gamma@example.com'),
+                  ('Delta Sürname', 'delta@example.com')],
+        ).message()
+        self.assertEqual(message['From'], '=?utf-8?q?From_S=C3=BCrname?= <from@example.com>')
+        self.assertEqual(message['To'], '=?utf-8?q?Alpha_S=C3=BCrname?= <alpha@example.com>, =?utf-8?q?Beta_S=C3=BCrname?= <beta@example.com>')
+        self.assertEqual(message['Cc'], '=?utf-8?q?Gamma_S=C3=BCrname?= <gamma@example.com>, =?utf-8?q?Delta_S=C3=BCrname?= <delta@example.com>')
+
+        message = EmailMessage(
+            subject='Subject', body='Reply',
+            from_email = ('Alpha Sürname', 'alpha@example.com'),
+            to = ['to@example.com']
+        ).message()
+        self.assertEqual(message['From'], '=?utf-8?q?Alpha_S=C3=BCrname?= <alpha@example.com>')
