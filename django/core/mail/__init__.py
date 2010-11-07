@@ -88,7 +88,7 @@ def mail_admins(subject, message, fail_silently=False, connection=None):
     if not settings.ADMINS:
         return
     EmailMessage(u'%s%s' % (settings.EMAIL_SUBJECT_PREFIX, subject), message,
-                 settings.SERVER_EMAIL, [a[1] for a in settings.ADMINS],
+                 settings.SERVER_EMAIL, settings.ADMINS,
                  connection=connection).send(fail_silently=fail_silently)
 
 
@@ -97,7 +97,7 @@ def mail_managers(subject, message, fail_silently=False, connection=None):
     if not settings.MANAGERS:
         return
     EmailMessage(u'%s%s' % (settings.EMAIL_SUBJECT_PREFIX, subject), message,
-                 settings.SERVER_EMAIL, [a[1] for a in settings.MANAGERS],
+                 settings.SERVER_EMAIL, settings.MANAGERS,
                  connection=connection).send(fail_silently=fail_silently)
 
 

@@ -10,7 +10,7 @@ from email.Header import Header
 from email.Utils import formatdate, getaddresses, formataddr
 
 from django.conf import settings
-from django.core.mail.utils import DNS_NAME
+from django.core.mail.utils import DNS_NAME, soft_formataddr
 from django.utils.encoding import smart_str, force_unicode
 
 # Don't BASE64-encode UTF-8 messages so that we avoid unwanted attention from
@@ -152,10 +152,12 @@ class EmailMessage(object):
                            self.content_subtype, encoding)
         msg = self._create_message(msg)
         msg['Subject'] = self.subject
-        msg['From'] = self.extra_headers.get('From', self.from_email)
-        msg['To'] = ', '.join(self.to)
+        msg['From'] = soft_formataddr(self.extra_headers.get('From',
+                                                             self.from_email))
+        msg['To'] = ', '.join([soft_formataddr(value) for value in self.to])
         if self.cc:
-            msg['Cc'] = ', '.join(self.cc)
+            msg['Cc'] = ', '.join([soft_formataddr(value)
+                                   for value in self.cc])
 
         # Email header names are case-insensitive (RFC 2045), so we have to
         # accommodate that when doing comparisons.
