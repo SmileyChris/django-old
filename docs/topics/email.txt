@@ -237,7 +237,7 @@ All parameters are optional and can be set at any time prior to calling the
 
 .. versionchanged:: 1.3
    The ``cc`` argument was added, and two-part tuples are accepted for
-   ``from_email``, ``to`` and ``bcc`` arguments.
+   ``from_email``, ``to`` and ``cc`` recipients.
 
     * ``subject``: The subject line of the e-mail.
 
@@ -248,7 +248,7 @@ All parameters are optional and can be set at any time prior to calling the
 
     * ``to``: A list or tuple of recipient addresses_.
 
-    * ``bcc``: A list or tuple of addresses_ used in the "Bcc" header when
+    * ``bcc``: A list or tuple of addresses used in the "Bcc" header when
       sending the e-mail.
 
     * ``connection``: An e-mail backend instance. Use this parameter if
@@ -264,11 +264,11 @@ All parameters are optional and can be set at any time prior to calling the
       caller to ensure header names and values are in the correct format for
       an e-mail message.
 
-    * ``cc``: A list or tuple of addresses used in the "Cc" receiver field when
-      sending the e-mail.      
+    * ``cc``: A list or tuple of recipient addresses_ used in the "Cc" header
+      when sending the e-mail.
 
-.. _address: `email address formats`_
-.. _addresses: `email address formats`_
+.. _address: `e-mail address formats`_
+.. _addresses: `e-mail address formats`_
 
 For example::
 
@@ -326,9 +326,15 @@ The class has the following methods:
 
 .. _DEFAULT_FROM_EMAIL: ../settings/#default-from-email
 
-Email address formats
-~~~~~~~~~~~~~~~~~~~~~
+E-Mail address formats
+~~~~~~~~~~~~~~~~~~~~~~
 
+Both ``fred@example.com`` and ``Fred <fred@example.com>`` forms are legal as
+e-mail addresses when using the ``From``, ``To`` and ``Cc`` fields.
+
+You can also use a two-part tuple to represent the recipient in the form
+``(name, email)``, which will get correctly escaped and formatted into the
+``Fred <fred@example.com>`` form.
 
 Sending alternative content types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
