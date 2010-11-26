@@ -337,7 +337,7 @@ class Query(object):
         # information but retrieves only the first row. Aggregate
         # over the subquery instead.
         if self.group_by is not None:
-            from subqueries import AggregateQuery
+            from django.db.models.sql.subqueries import AggregateQuery
             query = AggregateQuery(self.model)
 
             obj = self.clone()
@@ -349,7 +349,13 @@ class Query(object):
                     query.aggregate_select[alias] = aggregate
                     del obj.aggregate_select[alias]
 
-            query.add_subquery(obj, using)
+            try:
+                query.add_subquery(obj, using)
+            except EmptyResultSet:
+                return dict(
+                    (alias, None)
+                    for alias in query.aggregate_select
+                )
         else:
             query = self
             self.select = []
@@ -382,13 +388,19 @@ class Query(object):
             # If a select clause exists, then the query has already started to
             # specify the columns that are to be returned.
             # In this case, we need to use a subquery to evaluate the count.
-            from subqueries import AggregateQuery
+            from django.db.models.sql.subqueries import AggregateQuery
             subquery = obj
             subquery.clear_ordering(True)
             subquery.clear_limits()
 
             obj = AggregateQuery(obj.model)
-            obj.add_subquery(subquery, using=using)
+            try:
+                obj.add_subquery(subquery, using=using)
+            except EmptyResultSet:
+                # add_subquery evaluates the query, if it's an EmptyResultSet
+                # then there are can be no results, and therefore there the
+                # count is obviously 0
+                return 0
 
         obj.add_count_column()
         number = obj.get_aggregation(using=using)[None]
@@ -909,8 +921,7 @@ class Query(object):
         """
         opts = model._meta
         field_list = aggregate.lookup.split(LOOKUP_SEP)
-        if (len(field_list) == 1 and
-            aggregate.lookup in self.aggregates.keys()):
+        if len(field_list) == 1 and aggregate.lookup in self.aggregates:
             # Aggregate is over an annotation
             field_name = field_list[0]
             col = field_name
@@ -1078,11 +1089,14 @@ class Query(object):
                         if self.alias_map[alias][JOIN_TYPE] == self.LOUTER:
                             j_col = self.alias_map[alias][RHS_JOIN_COL]
                             entry = self.where_class()
-                            entry.add((Constraint(alias, j_col, None), 'isnull', True), AND)
+                            entry.add(
+                                (Constraint(alias, j_col, None), 'isnull', True),
+                                AND
+                            )
                             entry.negate()
                             self.where.add(entry, AND)
                             break
-                elif not (lookup_type == 'in'
+                if not (lookup_type == 'in'
                             and not hasattr(value, 'as_sql')
                             and not hasattr(value, '_as_sql')
                             and not value) and field.null:

@@ -1,9 +1,10 @@
 import sys
-import unittest
 
 from django.conf import settings
 from django.db.models import get_app
 from django.test.simple import build_suite, DjangoTestSuiteRunner
+from django.utils import unittest
+
 
 def run_tests(*args, **kwargs):
     from django.test.simple import run_tests as base_run_tests
@@ -13,7 +14,7 @@ def run_gis_tests(test_labels, verbosity=1, interactive=True, failfast=False, ex
     import warnings
     warnings.warn(
         'The run_gis_tests() test runner has been deprecated in favor of GeoDjangoTestSuiteRunner.',
-        PendingDeprecationWarning
+        DeprecationWarning
     )
     test_runner = GeoDjangoTestSuiteRunner(verbosity=verbosity, interactive=interactive, failfast=failfast)
     return test_runner.run_tests(test_labels, extra_tests=extra_tests)
@@ -22,15 +23,16 @@ class GeoDjangoTestSuiteRunner(DjangoTestSuiteRunner):
 
     def setup_test_environment(self, **kwargs):
         super(GeoDjangoTestSuiteRunner, self).setup_test_environment(**kwargs)
-        
+
         from django.db import connection
         from django.contrib.gis.geos import GEOS_PREPARE
         from django.contrib.gis.gdal import HAS_GDAL
 
         # Getting and storing the original values of INSTALLED_APPS and
         # the ROOT_URLCONF.
-        self.old_installed = settings.INSTALLED_APPS
-        self.old_root_urlconf = settings.ROOT_URLCONF
+        self.old_installed = getattr(settings, 'INSTALLED_APPS', None)
+        self.old_root_urlconf = getattr(settings, 'ROOT_URLCONF', None)
+        self.old_site_id = getattr(settings, 'SITE_ID', None)
 
         # Tests that require use of a spatial database (e.g., creation of models)
         self.geo_apps = ['geoapp', 'relatedapp']
@@ -49,7 +51,7 @@ class GeoDjangoTestSuiteRunner(DjangoTestSuiteRunner):
 
             self.geo_apps.append('layermap')
 
-        # Constructing the new INSTALLED_APPS, and including applications 
+        # Constructing the new INSTALLED_APPS, and including applications
         # within the GeoDjango test namespace (`self.geo_apps`).
         new_installed =  ['django.contrib.sites',
                           'django.contrib.sitemaps',
@@ -61,11 +63,13 @@ class GeoDjangoTestSuiteRunner(DjangoTestSuiteRunner):
 
         # Setting the URLs.
         settings.ROOT_URLCONF = 'django.contrib.gis.tests.urls'
+        settings.SITE_ID = 1
 
     def teardown_test_environment(self, **kwargs):
         super(GeoDjangoTestSuiteRunner, self).teardown_test_environment(**kwargs)
         settings.INSTALLED_APPS = self.old_installed
         settings.ROOT_URLCONF = self.old_root_urlconf
+        settings.SITE_ID = self.old_site_id
 
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
         """

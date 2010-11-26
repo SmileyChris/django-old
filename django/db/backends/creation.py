@@ -140,7 +140,7 @@ class BaseDatabaseCreation(object):
         import warnings
         warnings.warn(
             'Database creation API for m2m tables has been deprecated. M2M models are now automatically generated',
-            PendingDeprecationWarning
+            DeprecationWarning
         )
 
         output = []
@@ -154,7 +154,7 @@ class BaseDatabaseCreation(object):
         import warnings
         warnings.warn(
             'Database creation API for m2m tables has been deprecated. M2M models are now automatically generated',
-            PendingDeprecationWarning
+            DeprecationWarning
         )
 
         from django.db import models
@@ -217,7 +217,7 @@ class BaseDatabaseCreation(object):
         import warnings
         warnings.warn(
             'Database creation API for m2m tables has been deprecated. M2M models are now automatically generated',
-            PendingDeprecationWarning
+            DeprecationWarning
         )
 
         from django.db import models
@@ -322,7 +322,7 @@ class BaseDatabaseCreation(object):
         import warnings
         warnings.warn(
             'Database creation API for m2m tables has been deprecated. M2M models are now automatically generated',
-            PendingDeprecationWarning
+            DeprecationWarning
         )
 
         qn = self.connection.ops.quote_name
@@ -340,15 +340,19 @@ class BaseDatabaseCreation(object):
         Creates a test database, prompting the user for confirmation if the
         database already exists. Returns the name of the test database created.
         """
-        if verbosity >= 1:
-            print "Creating test database '%s'..." % self.connection.alias
-
         test_database_name = self._create_test_db(verbosity, autoclobber)
+
+        if verbosity >= 1:
+            test_db_repr = ''
+            if verbosity >= 2:
+                test_db_repr = " ('%s')" % test_database_name
+            print "Creating test database for alias '%s'%s..." % (self.connection.alias, test_db_repr)
 
         self.connection.close()
         self.connection.settings_dict["NAME"] = test_database_name
-        can_rollback = self._rollback_works()
-        self.connection.settings_dict["SUPPORTS_TRANSACTIONS"] = can_rollback
+
+        # Confirm the feature set of the test database
+        self.connection.features.confirm()
 
         # Report syncdb messages at one level lower than that requested.
         # This ensures we don't get flooded with messages during testing
@@ -405,27 +409,18 @@ class BaseDatabaseCreation(object):
 
         return test_database_name
 
-    def _rollback_works(self):
-        cursor = self.connection.cursor()
-        cursor.execute('CREATE TABLE ROLLBACK_TEST (X INT)')
-        self.connection._commit()
-        cursor.execute('INSERT INTO ROLLBACK_TEST (X) VALUES (8)')
-        self.connection._rollback()
-        cursor.execute('SELECT COUNT(X) FROM ROLLBACK_TEST')
-        count, = cursor.fetchone()
-        cursor.execute('DROP TABLE ROLLBACK_TEST')
-        self.connection._commit()
-        return count == 0
-
     def destroy_test_db(self, old_database_name, verbosity=1):
         """
         Destroy a test database, prompting the user for confirmation if the
         database already exists. Returns the name of the test database created.
         """
-        if verbosity >= 1:
-            print "Destroying test database '%s'..." % self.connection.alias
         self.connection.close()
         test_database_name = self.connection.settings_dict['NAME']
+        if verbosity >= 1:
+            test_db_repr = ''
+            if verbosity >= 2:
+                test_db_repr = " ('%s')" % test_database_name
+            print "Destroying test database for alias '%s'%s..." % (self.connection.alias, test_db_repr)
         self.connection.settings_dict['NAME'] = old_database_name
 
         self._destroy_test_db(test_database_name, verbosity)

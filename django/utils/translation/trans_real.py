@@ -24,6 +24,9 @@ _default = None
 # file lookups when checking the same locale on repeated requests.
 _accepted = {}
 
+# magic gettext number to separate context from message
+CONTEXT_SEPARATOR = u"\x04"
+
 # Format of Accept-Language header values. From RFC 2616, section 14.4 and 3.9.
 accept_language_re = re.compile(r'''
         ([A-Za-z]{1,8}(?:-[A-Za-z]{1,8})*|\*)   # "en", "en-au", "x-y-z", "*"
@@ -192,7 +195,7 @@ def activate(language):
         warnings.warn(
             "The use of the language code 'no' is deprecated. "
             "Please use the 'nb' translation instead.",
-            PendingDeprecationWarning
+            DeprecationWarning
         )
     _active[currentThread()] = translation(language)
 
@@ -228,12 +231,12 @@ def get_language():
 def get_language_bidi():
     """
     Returns selected language's BiDi layout.
-    
+
     * False = left-to-right layout
     * True = right-to-left layout
     """
     from django.conf import settings
-    
+
     base_lang = get_language().split('-')[0]
     return base_lang in settings.LANGUAGES_BIDI
 
@@ -279,6 +282,14 @@ def gettext(message):
 def ugettext(message):
     return do_translate(message, 'ugettext')
 
+def pgettext(context, message):
+    result = do_translate(
+        u"%s%s%s" % (context, CONTEXT_SEPARATOR, message), 'ugettext')
+    if CONTEXT_SEPARATOR in result:
+        # Translation not found
+        result = message
+    return result
+
 def gettext_noop(message):
     """
     Marks strings for translation but doesn't translate them now. This can be
@@ -312,6 +323,15 @@ def ungettext(singular, plural, number):
     plural, based on the number.
     """
     return do_ntranslate(singular, plural, number, 'ungettext')
+
+def npgettext(context, singular, plural, number):
+    result = do_ntranslate(u"%s%s%s" % (context, CONTEXT_SEPARATOR, singular),
+                           u"%s%s%s" % (context, CONTEXT_SEPARATOR, plural),
+                           number, 'ungettext')
+    if CONTEXT_SEPARATOR in result:
+        # Translation not found
+        result = do_ntranslate(singular, plural, number, 'ungettext')
+    return result
 
 def check_for_language(lang_code):
     """
@@ -407,14 +427,23 @@ def templatize(src):
     does so by translating the Django translation tags into standard gettext
     function invocations.
     """
-    from django.template import Lexer, TOKEN_TEXT, TOKEN_VAR, TOKEN_BLOCK
+    from django.template import Lexer, TOKEN_TEXT, TOKEN_VAR, TOKEN_BLOCK, TOKEN_COMMENT
     out = StringIO()
     intrans = False
     inplural = False
     singular = []
     plural = []
+    incomment = False
+    comment = []
     for t in Lexer(src, None).tokenize():
-        if intrans:
+        if incomment:
+            if t.token_type == TOKEN_BLOCK and t.contents == 'endcomment':
+                out.write(' # %s' % ''.join(comment))
+                incomment = False
+                comment = []
+            else:
+                comment.append(t.contents)
+        elif intrans:
             if t.token_type == TOKEN_BLOCK:
                 endbmatch = endblock_re.match(t.contents)
                 pluralmatch = plural_re.match(t.contents)
@@ -443,10 +472,11 @@ def templatize(src):
                 else:
                     singular.append('%%(%s)s' % t.contents)
             elif t.token_type == TOKEN_TEXT:
+                contents = t.contents.replace('%', '%%')
                 if inplural:
-                    plural.append(t.contents)
+                    plural.append(contents)
                 else:
-                    singular.append(t.contents)
+                    singular.append(contents)
         else:
             if t.token_type == TOKEN_BLOCK:
                 imatch = inline_re.match(t.contents)
@@ -467,6 +497,8 @@ def templatize(src):
                 elif cmatches:
                     for cmatch in cmatches:
                         out.write(' _(%s) ' % cmatch)
+                elif t.contents == 'comment':
+                    incomment = True
                 else:
                     out.write(blankout(t.contents, 'B'))
             elif t.token_type == TOKEN_VAR:
@@ -479,6 +511,8 @@ def templatize(src):
                         out.write(' %s ' % p.split(':',1)[1])
                     else:
                         out.write(blankout(p, 'F'))
+            elif t.token_type == TOKEN_COMMENT:
+                out.write(' # %s' % t.contents)
             else:
                 out.write(blankout(t.contents, 'X'))
     return out.getvalue()
@@ -517,7 +551,7 @@ def get_date_formats():
     warnings.warn(
         "'django.utils.translation.get_date_formats' is deprecated. "
         "Please update your code to use the new i18n aware formatting.",
-        PendingDeprecationWarning
+        DeprecationWarning
     )
     from django.conf import settings
     date_format = ugettext('DATE_FORMAT')
@@ -540,7 +574,7 @@ def get_partial_date_formats():
     warnings.warn(
         "'django.utils.translation.get_partial_date_formats' is deprecated. "
         "Please update your code to use the new i18n aware formatting.",
-        PendingDeprecationWarning
+        DeprecationWarning
     )
     from django.conf import settings
     year_month_format = ugettext('YEAR_MONTH_FORMAT')

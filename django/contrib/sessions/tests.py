@@ -1,4 +1,9 @@
+import base64
 from datetime import datetime, timedelta
+import pickle
+import shutil
+import tempfile
+
 from django.conf import settings
 from django.contrib.sessions.backends.db import SessionStore as DatabaseSession
 from django.contrib.sessions.backends.cache import SessionStore as CacheSession
@@ -8,9 +13,8 @@ from django.contrib.sessions.backends.base import SessionBase
 from django.contrib.sessions.models import Session
 from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase
-import shutil
-import tempfile
-import unittest
+from django.utils import unittest
+from django.utils.hashcompat import md5_constructor
 
 
 class SessionTestsMixin(object):
@@ -236,10 +240,55 @@ class SessionTestsMixin(object):
         finally:
             settings.SESSION_EXPIRE_AT_BROWSER_CLOSE = original_expire_at_browser_close
 
+    def test_decode(self):
+        # Ensure we can decode what we encode
+        data = {'a test key': 'a test value'}
+        encoded = self.session.encode(data)
+        self.assertEqual(self.session.decode(encoded), data)
+
+    def test_decode_django12(self):
+        # Ensure we can decode values encoded using Django 1.2
+        # Hard code the Django 1.2 method here:
+        def encode(session_dict):
+            pickled = pickle.dumps(session_dict, pickle.HIGHEST_PROTOCOL)
+            pickled_md5 = md5_constructor(pickled + settings.SECRET_KEY).hexdigest()
+            return base64.encodestring(pickled + pickled_md5)
+
+        data = {'a test key': 'a test value'}
+        encoded = encode(data)
+        self.assertEqual(self.session.decode(encoded), data)
+
 
 class DatabaseSessionTests(SessionTestsMixin, TestCase):
 
     backend = DatabaseSession
+
+    def test_session_get_decoded(self):
+        """
+        Test we can use Session.get_decoded to retrieve data stored
+        in normal way
+        """
+        self.session['x'] = 1
+        self.session.save()
+
+        s = Session.objects.get(session_key=self.session.session_key)
+
+        self.assertEqual(s.get_decoded(), {'x': 1})
+
+    def test_sessionmanager_save(self):
+        """
+        Test SessionManager.save method
+        """
+        # Create a session
+        self.session['y'] = 1
+        self.session.save()
+
+        s = Session.objects.get(session_key=self.session.session_key)
+        # Change it
+        Session.objects.save(s.session_key, {'y':2}, s.expire_date)
+        # Clear cache, so that it will be retrieved from DB
+        del self.session._session_cache
+        self.assertEqual(self.session['y'], 2)
 
 
 class CacheDBSessionTests(SessionTestsMixin, TestCase):

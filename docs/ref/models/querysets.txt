@@ -9,7 +9,7 @@ material presented in the :doc:`model </topics/db/models>` and :doc:`database
 query </topics/db/queries>` guides, so you'll probably want to read and
 understand those documents before reading this one.
 
-Throughout this reference we'll use the :ref:`example weblog models
+Throughout this reference we'll use the :ref:`example Weblog models
 <queryset-model-example>` presented in the :doc:`database query guide
 </topics/db/queries>`.
 
@@ -398,11 +398,8 @@ Example::
     >>> Blog.objects.values('id', 'name')
     [{'id': 1, 'name': 'Beatles Blog'}]
 
-A couple of subtleties that are worth mentioning:
+A few subtleties that are worth mentioning:
 
-    * The ``values()`` method does not return anything for
-      :class:`~django.db.models.ManyToManyField` attributes and will raise an
-      error if you try to pass in this type of field to it.
     * If you have a field called ``foo`` that is a
       :class:`~django.db.models.ForeignKey`, the default ``values()`` call
       will return a dictionary key called ``foo_id``, since this is the name
@@ -452,6 +449,28 @@ The people who made Django prefer to put all the SQL-affecting methods first,
 followed (optionally) by any output-affecting methods (such as ``values()``),
 but it doesn't really matter. This is your chance to really flaunt your
 individualism.
+
+.. versionchanged:: 1.3
+
+The ``values()`` method previously did not return anything for
+:class:`~django.db.models.ManyToManyField` attributes and would raise an error
+if you tried to pass this type of field to it.
+
+This restriction has been lifted, and you can now also refer to fields on
+related models with reverse relations through ``OneToOneField``, ``ForeignKey``
+and ``ManyToManyField`` attributes::
+
+	Blog.objects.values('name', 'entry__headline')
+	[{'name': 'My blog', 'entry__headline': 'An entry'},
+         {'name': 'My blog', 'entry__headline': 'Another entry'}, ...]
+
+.. warning::
+
+   Because :class:`~django.db.models.ManyToManyField` attributes and reverse
+   relations can have multiple related rows, including these can have a
+   multiplier effect on the size of your result set. This will be especially
+   pronounced if you include multiple such fields in your ``values()`` query,
+   in which case all possible combinations will be returned.
 
 ``values_list(*fields)``
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1220,6 +1239,68 @@ a large degree.  If ``some_query_set`` has not yet been evaluated, but you know
 that it will be at some point, then using ``some_query_set.exists()`` will do
 more overall work (an additional query) than simply using
 ``bool(some_query_set)``.
+
+``update(**kwargs)``
+~~~~~~~~~~~~~~~~~~~~
+
+.. method:: update(**kwargs)
+
+Performs an SQL update query for the specified fields, and returns
+the number of rows affected. The ``update()`` method is applied instantly and
+the only restriction on the :class:`QuerySet` that is updated is that it can
+only update columns in the model's main table. Filtering based on related
+fields is still possible. You cannot call ``update()`` on a
+:class:`QuerySet` that has had a slice taken or can otherwise no longer be 
+filtered.
+
+For example, if you wanted to update all the entries in a particular blog
+to use the same headline::
+
+    >>> b = Blog.objects.get(pk=1)
+
+    # Update all the headlines belonging to this Blog.
+    >>> Entry.objects.select_related().filter(blog=b).update(headline='Everything is the same')
+
+The ``update()`` method does a bulk update and does not call any ``save()``
+methods on your models, nor does it emit the ``pre_save`` or ``post_save``
+signals (which are a consequence of calling ``save()``).
+
+``delete()``
+~~~~~~~~~~~~~~~~~~~~
+
+.. method:: delete()
+
+Performs an SQL delete query on all rows in the :class:`QuerySet`. The
+``delete()`` is applied instantly. You cannot call ``delete()`` on a
+:class:`QuerySet` that has had a slice taken or can otherwise no longer be
+filtered.
+
+For example, to delete all the entries in a particular blog::
+
+    >>> b = Blog.objects.get(pk=1)
+
+    # Delete all the entries belonging to this Blog.
+    >>> Entry.objects.filter(blog=b).delete()
+
+By default, Django's :class:`~django.db.models.ForeignKey` emulates the SQL
+constraint ``ON DELETE CASCADE`` -- in other words, any objects with foreign
+keys pointing at the objects to be deleted will be deleted along with them.
+For example::
+
+    blogs = Blog.objects.all()
+    # This will delete all Blogs and all of their Entry objects.
+    blogs.delete()
+
+.. versionadded:: 1.3
+    This cascade behavior is customizable via the
+    :attr:`~django.db.models.ForeignKey.on_delete` argument to the
+    :class:`~django.db.models.ForeignKey`.
+
+The ``delete()`` method does a bulk delete and does not call any ``delete()``
+methods on your models. It does, however, emit the
+:data:`~django.db.models.signals.pre_delete` and
+:data:`~django.db.models.signals.post_delete` signals for all deleted objects
+(including cascaded deletions).
 
 .. _field-lookups:
 

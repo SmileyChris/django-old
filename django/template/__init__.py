@@ -82,6 +82,7 @@ VARIABLE_TAG_START = '{{'
 VARIABLE_TAG_END = '}}'
 COMMENT_TAG_START = '{#'
 COMMENT_TAG_END = '#}'
+TRANSLATOR_COMMENT_MARK = 'Translators'
 SINGLE_BRACE_START = '{'
 SINGLE_BRACE_END = '}'
 
@@ -237,7 +238,10 @@ class Lexer(object):
             elif token_string.startswith(BLOCK_TAG_START):
                 token = Token(TOKEN_BLOCK, token_string[len(BLOCK_TAG_START):-len(BLOCK_TAG_END)].strip())
             elif token_string.startswith(COMMENT_TAG_START):
-                token = Token(TOKEN_COMMENT, '')
+                content = ''
+                if token_string.find(TRANSLATOR_COMMENT_MARK):
+                    content = token_string[len(COMMENT_TAG_START):-len(COMMENT_TAG_END)].strip()
+                token = Token(TOKEN_COMMENT, content)
         else:
             token = Token(TOKEN_TEXT, token_string)
         return token
@@ -825,7 +829,7 @@ def _render_value_in_context(value, context):
     means escaping, if required, and conversion to a unicode object. If value
     is a string, it is expected to have already been translated.
     """
-    value = localize(value)
+    value = localize(value, use_l10n=context.use_l10n)
     value = force_unicode(value)
     if (context.autoescape and not isinstance(value, SafeData)) or isinstance(value, EscapeData):
         return escape(value)

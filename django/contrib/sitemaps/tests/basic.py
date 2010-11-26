@@ -1,11 +1,13 @@
 from datetime import date
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.contrib.flatpages.models import FlatPage
+from django.contrib.sitemaps import Sitemap
 from django.contrib.sites.models import Site
+from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase
+from django.utils.unittest import skipUnless
 from django.utils.formats import localize
-from django.utils.translation import activate
+from django.utils.translation import activate, deactivate
 
 
 class SitemapTests(TestCase):
@@ -44,20 +46,33 @@ class SitemapTests(TestCase):
         response = self.client.get('/simple/sitemap.xml')
         self.assertContains(response, '<priority>0.5</priority>')
         self.assertContains(response, '<lastmod>%s</lastmod>' % date.today().strftime('%Y-%m-%d'))
+        deactivate()
 
     def test_generic_sitemap(self):
         "A minimal generic sitemap can be rendered"
         # Retrieve the sitemap.
         response = self.client.get('/generic/sitemap.xml')
+
+        expected = ''
+        for username in User.objects.values_list("username", flat=True):
+            expected += "<url><loc>http://example.com/users/%s/</loc></url>" %username
         # Check for all the important bits:
         self.assertEquals(response.content, """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-<url><loc>http://example.com/users/testuser/</loc></url>
+%s
 </urlset>
-""")
+""" %expected)
 
+    @skipUnless("django.contrib.flatpages" in settings.INSTALLED_APPS, "django.contrib.flatpages app not installed.")
     def test_flatpage_sitemap(self):
         "Basic FlatPage sitemap test"
+
+        # Import FlatPage inside the test so that when django.contrib.flatpages
+        # is not installed we don't get problems trying to delete Site
+        # objects (FlatPage has an M2M to Site, Site.delete() tries to
+        # delete related objects, but the M2M table doesn't exist.
+        from django.contrib.flatpages.models import FlatPage
+
         public = FlatPage.objects.create(
             url=u'/public/',
             title=u'Public Page',
@@ -67,7 +82,7 @@ class SitemapTests(TestCase):
         public.sites.add(settings.SITE_ID)
         private = FlatPage.objects.create(
             url=u'/private/',
-            title=u'Public Page',
+            title=u'Private Page',
             enable_comments=True,
             registration_required=True
         )
@@ -82,7 +97,6 @@ class SitemapTests(TestCase):
         # Make sure hitting the flatpages sitemap without the sites framework
         # installed doesn't raise an exception
         Site._meta.installed = False
-        response = self.client.get('/flatpages/sitemap.xml')
         # Retrieve the sitemap.
         response = self.client.get('/simple/sitemap.xml')
         # Check for all the important bits:
@@ -91,3 +105,22 @@ class SitemapTests(TestCase):
 <url><loc>http://testserver/location/</loc><lastmod>%s</lastmod><changefreq>never</changefreq><priority>0.5</priority></url>
 </urlset>
 """ % date.today().strftime('%Y-%m-%d'))
+
+    def test_sitemap_get_urls_no_site_1(self):
+        """
+        Check we get ImproperlyConfigured if we don't pass a site object to
+        Sitemap.get_urls and no Site objects exist
+        """
+        Site._meta.installed = True
+        Site.objects.all().delete()
+        self.assertRaises(ImproperlyConfigured, Sitemap().get_urls)
+
+    def test_sitemap_get_urls_no_site_2(self):
+        """
+        Check we get ImproperlyConfigured when we don't pass a site object to
+        Sitemap.get_urls if Site objects exists, but the sites framework is not
+        actually installed.
+        """
+        Site.objects.get_current()
+        Site._meta.installed = False
+        self.assertRaises(ImproperlyConfigured, Sitemap().get_urls)

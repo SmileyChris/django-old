@@ -1,9 +1,14 @@
-import logging
-
 from django.template import loader, RequestContext
 from django.http import HttpResponse, HttpResponseRedirect, HttpResponsePermanentRedirect, HttpResponseGone
+from django.utils.log import getLogger
 
-logger = logging.getLogger('django.request')
+import warnings
+warnings.warn(
+    'Function-based generic views have been deprecated; use class-based views instead.',
+    PendingDeprecationWarning
+)
+
+logger = getLogger('django.request')
 
 
 def direct_to_template(request, template, extra_context=None, mimetype=None, **kwargs):

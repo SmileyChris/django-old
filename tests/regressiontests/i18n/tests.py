@@ -11,12 +11,14 @@ from django.test import TestCase
 from django.utils.formats import get_format, date_format, time_format, localize, localize_input, iter_format_modules
 from django.utils.numberformat import format as nformat
 from django.utils.safestring import mark_safe, SafeString, SafeUnicode
-from django.utils.translation import ugettext, ugettext_lazy, activate, deactivate, gettext_lazy, to_locale
+from django.utils.translation import ugettext, ugettext_lazy, activate, deactivate, gettext_lazy, pgettext, npgettext, to_locale
 from django.utils.importlib import import_module
 
 
 from forms import I18nForm, SelectDateForm, SelectDateWidget, CompanyForm
 from models import Company, TestModel
+
+from commands.tests import *
 
 
 class TranslationTests(TestCase):
@@ -51,6 +53,22 @@ class TranslationTests(TestCase):
         self.assertEqual(unicode(s1), "test")
         s2 = pickle.loads(pickle.dumps(s1))
         self.assertEqual(unicode(s2), "test")
+
+    def test_pgettext(self):
+        # Reset translation catalog to include other/locale/de
+        self.old_locale_paths = settings.LOCALE_PATHS
+        settings.LOCALE_PATHS += (os.path.join(os.path.dirname(os.path.abspath(__file__)), 'other', 'locale'),)
+        from django.utils.translation import trans_real
+        trans_real._active = {}
+        trans_real._translations = {}
+        activate('de')
+
+        self.assertEqual(pgettext("unexisting", "May"), u"May")
+        self.assertEqual(pgettext("month name", "May"), u"Mai")
+        self.assertEqual(pgettext("verb", "May"), u"Kann")
+        self.assertEqual(npgettext("search", "%d result", "%d results", 4) % 4, u"4 Resultate")
+
+        settings.LOCALE_PATHS = self.old_locale_paths
 
     def test_string_concat(self):
         """
@@ -450,6 +468,33 @@ class FormattingTests(TestCase):
         finally:
             settings.FORMAT_MODULE_PATH = old_format_module_path
             deactivate()
+
+    def test_localize_templatetag_and_filter(self):
+        """
+        Tests the {% localize %} templatetag
+        """
+        context = Context({'value': 3.14 })
+        template1 = Template("{% load l10n %}{% localize %}{{ value }}{% endlocalize %};{% localize on %}{{ value }}{% endlocalize %}")
+        template2 = Template("{% load l10n %}{{ value }};{% localize off %}{{ value }};{% endlocalize %}{{ value }}")
+        template3 = Template('{% load l10n %}{{ value }};{{ value|unlocalize }}')
+        template4 = Template('{% load l10n %}{{ value }};{{ value|localize }}')
+        output1 = '3,14;3,14'
+        output2 = '3,14;3.14;3,14'
+        output3 = '3,14;3.14'
+        output4 = '3.14;3,14'
+        old_localize = settings.USE_L10N
+        try:
+            activate('de')
+            settings.USE_L10N = False
+            self.assertEqual(template1.render(context), output1)
+            self.assertEqual(template4.render(context), output4)
+            settings.USE_L10N = True
+            self.assertEqual(template1.render(context), output1)
+            self.assertEqual(template2.render(context), output2)
+            self.assertEqual(template3.render(context), output3)
+        finally:
+            deactivate()
+            settings.USE_L10N = old_localize
 
 class MiscTests(TestCase):
 
