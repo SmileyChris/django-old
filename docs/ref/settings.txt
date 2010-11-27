@@ -155,6 +155,18 @@ argument signature.
 
 See the :ref:`cache documentation <cache_key_transformation>` for more information.
 
+.. setting:: CACHE_KEY_PREFIX
+
+CACHE_KEY_PREFIX
+----------------
+
+Default: ``''`` (Empty string)
+
+A string that will be automatically included (prepended by default) to
+all cache keys used by the Django server.
+
+See the :ref:`cache documentation <cache_key_prefixing>` for more information.
+
 .. setting:: CACHE_MIDDLEWARE_ANONYMOUS_ONLY
 
 CACHE_MIDDLEWARE_ANONYMOUS_ONLY
@@ -193,18 +205,6 @@ The default number of seconds to cache a page when the caching middleware or
 ``cache_page()`` decorator is used.
 
 See :doc:`/topics/cache`.
-
-.. setting:: CACHE_PREFIX
-
-CACHE_PREFIX
-------------
-
-Default: ``''`` (Empty string)
-
-A string that will be automatically included (prepended by default) to
-all cache keys used by the Django server.
-
-See the :ref:`cache documentation <cache_key_prefixing>` for more information.
 
 .. setting:: CACHE_VERSION
 
@@ -1391,6 +1391,25 @@ Default: ``None``
 The domain to use for session cookies. Set this to a string such as
 ``".lawrence.com"`` for cross-domain cookies, or use ``None`` for a standard
 domain cookie. See the :doc:`/topics/http/sessions`.
+
+.. setting:: SESSION_COOKIE_HTTPONLY
+
+SESSION_COOKIE_HTTPONLY
+-----------------------
+
+Default: ``False``
+
+Whether to use HTTPOnly flag on the session cookie. If this is set to
+``True``, client-side JavaScript will not to be able to access the
+session cookie.
+
+HTTPOnly_ is a flag included in a Set-Cookie HTTP response header. It
+is not part of the RFC2109 standard for cookies, and it isn't honored
+consistently by all browsers. However, when it is honored, it can be a
+useful way to mitigate the risk of client side script accessing the
+protected cookie data.
+
+.. _HTTPOnly: http://www.owasp.org/index.php/HTTPOnly
 
 .. setting:: SESSION_COOKIE_NAME
 
