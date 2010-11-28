@@ -8,7 +8,7 @@ from htmlentitydefs import name2codepoint
 capfirst = lambda x: x and force_unicode(x)[0].upper() + force_unicode(x)[1:]
 capfirst = allow_lazy(capfirst, unicode)
 
-def wrap(text, width):
+def old_wrap(text, width):
     """
     A word-wrap function that preserves existing line breaks and most spaces in
     the text. Expects that existing line breaks are posix newlines.
@@ -33,6 +33,81 @@ def wrap(text, width):
                 if len(lines) > 1:
                     pos = len(lines[-1])
             yield word
+    return u''.join(_generator())
+old_wrap = allow_lazy(old_wrap, unicode) 
+
+def test_wrap(text, width): 
+    """ 
+    A word-wrap function that preserves existing line breaks. Expects that 
+    existing line breaks are posix newlines. 
+ 
+    All white space is preserved except added line breaks consume the space on 
+    which they break the line. 
+ 
+    Long words are not wrapped, so the output text may have lines longer than 
+    ``width``. 
+    """ 
+    text = force_unicode(text) 
+    def _generator(): 
+        for line in text.splitlines(True):   # True keeps trailing linebreaks 
+            quote = '' 
+            max_width = (line.endswith('\n') and width + 1 or width) 
+            while len(line) > max_width: 
+                space = line[:max_width+1].rfind(' ') + 1 
+                if space == 0: 
+                    space = line.find(' ') + 1 
+                    if space == 0: 
+                        yield line 
+                        line = '' 
+                        break 
+                yield '%s\n' % line[:space-1] 
+                line = line[space:] 
+                max_width = (line.endswith('\n') and width + 1 or width) 
+            if line: 
+                yield line 
+    return u''.join(_generator()) 
+test_wrap = allow_lazy(test_wrap, unicode) 
+
+
+def wrap(text, width):
+    """
+    A word-wrap function that preserves existing line breaks and most spaces in
+    the text. Expects that existing line breaks are posix newlines.
+    """
+    text = force_unicode(text)
+    def _generator():
+        pos = 0
+        length = len(text)
+        while True:
+            max_pos = pos + width
+            if length <= max_pos:
+                yield text[pos:]
+                return
+            # Look for the next break.
+            next_pos = text.find('\n', pos, max_pos)
+            if next_pos != -1:
+                # Yield the line, including the break.
+                space = False
+            else:
+                # Look for the last space before the max width.
+                next_pos = text.rfind(' ', pos, max_pos)
+                if next_pos != -1:
+                    space = True
+                else:
+                    # Otherwise, find the next space or break and split there.
+                    next_pos = min([found for found in
+                                    (text.find(' ', max_pos),
+                                     text.find('\n', max_pos),
+                                     length) if found != -1])
+                    space = text[next_pos:next_pos + 1] == ' '
+            if space:
+                yield text[pos:next_pos]
+                yield '\n'
+                next_pos += 1
+            else:
+                next_pos += 1
+                yield text[pos:next_pos]
+            pos = next_pos
     return u''.join(_generator())
 wrap = allow_lazy(wrap, unicode)
 
