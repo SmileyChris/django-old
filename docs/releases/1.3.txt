@@ -159,6 +159,12 @@ requests. These include:
       <cache_key_prefixing>` and :ref:`transformation
       <cache_key_transformation>` has been added to the cache API.
 
+    * Support for lookups spanning relations in admin's ``list_filter``.
+
+    * Support for _HTTPOnly cookies.
+
+.. _HTTPOnly: http://www.owasp.org/index.php/HTTPOnly
+
 .. _backwards-incompatible-changes-1.3:
 
 Backwards-incompatible changes in 1.3
@@ -266,6 +272,36 @@ local flavors:
       has been removed from the province list in favor of the new
       official designation "Aceh (ACE)".
 
+FormSet updates
+~~~~~~~~~~~~~~~
+
+In Django 1.3 ``FormSet`` creation behavior is modified slightly. Historically
+the class didn't make a distinction between not being passed data and being
+passed empty dictionary. This was inconsistent with behavior in other parts of
+the framework. Starting with 1.3 if you pass in empty dictionary the
+``FormSet`` will raise a ``ValidationError``.
+
+For example with a ``FormSet``::
+
+    >>> class ArticleForm(Form):
+    ...     title = CharField()
+    ...     pub_date = DateField()
+    >>> ArticleFormSet = formset_factory(ArticleForm)
+
+the following code will raise a ``ValidationError``::
+
+    >>> ArticleFormSet({})
+    Traceback (most recent call last):
+    ...
+    ValidationError: [u'ManagementForm data is missing or has been tampered with']
+
+if you need to instantiate an empty ``FormSet``, don't pass in the data or use
+``None``::
+
+    >>> formset = ArticleFormSet()
+    >>> formset = ArticleFormSet(data=None)
+
+
 
 .. _deprecated-features-1.3:
 
@@ -302,9 +338,12 @@ of active projects in its version control repositories, and its lead developer
 has shifted all of his efforts toward the lighter, slimmer, more stable, and
 more flexible ``mod_wsgi`` backend.
 
-If you are currently using the ``mod_python`` request handler, it is strongly
-encouraged you redeploy your Django instances using :doc:`mod_wsgi
-</howto/deployment/modwsgi>`.
+If you are currently using the ``mod_python`` request handler, you
+should redeploy your Django projects using another request handler.
+:doc:`mod_wsgi </howto/deployment/modwsgi>` is the request handler
+recommended by the Django project, but :doc:`FastCGI
+</howto/deployment/fastcgi>` is also supported. Support for
+``mod_python`` deployment will be removed in Django 1.5.
 
 Function-based generic views
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
