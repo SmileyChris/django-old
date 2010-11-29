@@ -370,7 +370,7 @@ class QueryDict(MultiValueDict):
         :arg safe: Used to specify characters which do not require quoting, for
             example::
 
-                >>> q = QueryDict()
+                >>> q = QueryDict('', mutable=True)
                 >>> q['next'] = '/a&b/'
                 >>> q.urlencode()
                 'next=%2Fa%26b%2F'
