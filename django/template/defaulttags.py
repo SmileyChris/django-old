@@ -19,17 +19,21 @@ kwarg_re = re.compile(r"(?:(\w+)=)?(.+)")
 def token_kwargs(bits, parser, support_legacy=False):
     """
     A utility method for parsing token keyword arguments.
-    
-    The :py:attr:`bits` argument should contain the a list containing remainder
-    of the token that is to be checked for arguments, separated by spaces.
 
-    Valid arguments will be removed from this list, and a dictionary of the
-    arguments will be returned when an invalid argument format is reached (or
-    the list is empty).
+    :param bits: A list containing remainder of the token (split by spaces)
+        that is to be checked for arguments. Valid arguments will be removed
+        from this list.
 
-    If :py:attr:`support_legacy` is ``True``, the legacy format ``1 as foo``
-    will be accepted. Otherwise, only the standard ``foo=1`` format is allowed.
+    :param support_legacy: If set to true ``True``, the legacy format
+        ``1 as foo`` will be accepted. Otherwise, only the standard ``foo=1``
+        format is allowed.
 
+    :returns: A dictionary of the arguments retrieved from the ``bits`` token
+        list.
+
+    There is no requirement for all remaining token ``bits`` to be keyword
+    arguments, so the dictionary will be returned as soon as an invalid
+    argument format is reached.
     """
     if not bits:
         return {}
@@ -343,7 +347,7 @@ class SsiNode(Node):
     def render(self, context):
         filepath = self.filepath
         if not self.legacy_filepath:
-           filepath = filepath.resolve(context)
+            filepath = filepath.resolve(context)
 
         if not include_is_allowed(filepath):
             if settings.DEBUG:
