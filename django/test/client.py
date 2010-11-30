@@ -81,11 +81,6 @@ class ClientHandler(BaseHandler):
             # admin views.
             request._dont_enforce_csrf_checks = not self.enforce_csrf_checks
             response = self.get_response(request)
-
-            # Apply response middleware.
-            for middleware_method in self._response_middleware:
-                response = middleware_method(request, response)
-            response = self.apply_response_fixes(request, response)
         finally:
             signals.request_finished.disconnect(close_connection)
             signals.request_finished.send(sender=self.__class__)
@@ -415,7 +410,7 @@ class Client(RequestFactory):
             # Provide a backwards-compatible (but pending deprecation) response.template
             def _get_template(self):
                 warnings.warn("response.template is deprecated; use response.templates instead (which is always a list)",
-                              PendingDeprecationWarning)
+                              PendingDeprecationWarning, stacklevel=2)
                 if not self.templates:
                     return None
                 elif len(self.templates) == 1:

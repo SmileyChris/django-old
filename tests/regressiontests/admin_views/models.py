@@ -90,6 +90,14 @@ class ArticleInline(admin.TabularInline):
 class ChapterInline(admin.TabularInline):
     model = Chapter
 
+class ChapterXtra1Admin(admin.ModelAdmin):
+    list_filter = ('chap',
+                   'chap__title',
+                   'chap__book',
+                   'chap__book__name',
+                   'chap__book__promo',
+                   'chap__book__promo__name',)
+
 class ArticleAdmin(admin.ModelAdmin):
     list_display = ('content', 'date', callable_year, 'model_year', 'modeladmin_year')
     list_filter = ('date',)
@@ -106,6 +114,25 @@ class ArticleAdmin(admin.ModelAdmin):
         return obj.date.year
     modeladmin_year.admin_order_field = 'date'
     modeladmin_year.short_description = None
+
+    def delete_model(self, request, obj):
+        EmailMessage(
+            'Greetings from a deleted object',
+            'I hereby inform you that some user deleted me',
+            'from@example.com',
+            ['to@example.com']
+        ).send()
+        return super(ArticleAdmin, self).delete_model(request, obj)
+
+    def save_model(self, request, obj, form, change=True):
+        EmailMessage(
+            'Greetings from a created object',
+            'I hereby inform you that some user created me',
+            'from@example.com',
+            ['to@example.com']
+        ).send()
+        return super(ArticleAdmin, self).save_model(request, obj, form, change)
+
 
 class CustomArticle(models.Model):
     content = models.TextField()
@@ -149,7 +176,7 @@ class Thing(models.Model):
         return self.title
 
 class ThingAdmin(admin.ModelAdmin):
-    list_filter = ('color',)
+    list_filter = ('color', 'color__warm', 'color__value')
 
 class Fabric(models.Model):
     NG_CHOICES = (
@@ -627,7 +654,7 @@ admin.site.register(CyclicTwo)
 # contrib.admin.util's get_deleted_objects function.
 admin.site.register(Book, inlines=[ChapterInline])
 admin.site.register(Promo)
-admin.site.register(ChapterXtra1)
+admin.site.register(ChapterXtra1, ChapterXtra1Admin)
 admin.site.register(Pizza, PizzaAdmin)
 admin.site.register(Topping)
 admin.site.register(Album)

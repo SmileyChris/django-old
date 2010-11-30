@@ -12,7 +12,7 @@ from django.contrib.staticfiles import finders
 class Command(NoArgsCommand):
     """
     Command that allows to copy or symlink media files from different
-    locations to the settings.STATICFILES_ROOT.
+    locations to the settings.STATIC_ROOT.
     """
     option_list = NoArgsCommand.option_list + (
         make_option('--noinput', action='store_false', dest='interactive',
@@ -39,9 +39,9 @@ class Command(NoArgsCommand):
         if options['use_default_ignore_patterns']:
             ignore_patterns += ['CVS', '.*', '*~']
         ignore_patterns = list(set(ignore_patterns))
-        self.copied_files = []
-        self.symlinked_files = []
-        self.unmodified_files = []
+        self.copied_files = set()
+        self.symlinked_files = set()
+        self.unmodified_files = set()
         self.destination_storage = get_storage_class(settings.STATICFILES_STORAGE)()
 
         try:
@@ -71,6 +71,9 @@ Type 'yes' to continue, or 'no' to cancel: """)
             if confirm != 'yes':
                 raise CommandError("Static files build cancelled.")
 
+        # Use ints for file times (ticket #14665)
+        os.stat_float_times(False)
+
         for finder in finders.get_finders():
             for source, prefix, storage in finder.list(ignore_patterns):
                 self.copy_file(source, prefix, storage, **options)
@@ -82,7 +85,7 @@ Type 'yes' to continue, or 'no' to cancel: """)
             self.stdout.write("\n%s static file%s %s to '%s'%s.\n"
                               % (actual_count, actual_count != 1 and 's' or '',
                                  symlink and 'symlinked' or 'copied',
-                                 settings.STATICFILES_ROOT,
+                                 settings.STATIC_ROOT,
                                  unmodified_count and ' (%s unmodified)'
                                  % unmodified_count or ''))
 
@@ -124,14 +127,14 @@ Type 'yes' to continue, or 'no' to cancel: """)
                 # storage doesn't support ``modified_time`` or failed.
                 pass
             else:
-                destination_is_link= os.path.islink(
+                destination_is_link = os.path.islink(
                     self.destination_storage.path(destination))
-                if destination_last_modified == source_last_modified:
+                if destination_last_modified >= source_last_modified:
                     if (not symlink and not destination_is_link):
                         if verbosity >= 2:
                             self.stdout.write("Skipping '%s' (not modified)\n"
                                               % destination)
-                        self.unmodified_files.append(destination)
+                        self.unmodified_files.add(destination)
                         return False
             if dry_run:
                 if verbosity >= 2:
@@ -157,7 +160,7 @@ Type 'yes' to continue, or 'no' to cancel: """)
                 except OSError:
                     pass
                 os.symlink(source_path, destination_path)
-            self.symlinked_files.append(destination)
+            self.symlinked_files.add(destination)
         else:
             if dry_run:
                 if verbosity >= 1:
@@ -180,5 +183,5 @@ Type 'yes' to continue, or 'no' to cancel: """)
                     if verbosity >= 1:
                         self.stdout.write("Copying %s to %s\n"
                                           % (source_path, destination))
-            self.copied_files.append(destination)
+            self.copied_files.add(destination)
         return True

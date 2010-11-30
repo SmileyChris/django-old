@@ -272,7 +272,7 @@ in different circumstances.
 Running tests
 =============
 
-Once you've written tests, run them using the :djadmin:`test` subcommand of
+Once you've written tests, run them using the :djadmin:`test` command of
 your project's ``manage.py`` utility::
 
     $ ./manage.py test
@@ -761,7 +761,7 @@ arguments at time of construction:
         parameters will be made available in the request.GET data. For example,
         if you were to make the request::
 
-        >>> c.post('/login/?vistor=true', {'name': 'fred', 'passwd': 'secret'})
+        >>> c.post('/login/?visitor=true', {'name': 'fred', 'passwd': 'secret'})
 
         ... the view handling this request could interrogate request.POST
         to retrieve the username and password, and could interrogate request.GET
@@ -1174,22 +1174,21 @@ Customizing the test client
 
 .. attribute:: TestCase.client_class
 
-If you want to use a different Client class (for example, a subclass
-with customized behavior), you can use the
-:attr:`~TestCase.client_class` class attribute to specify a custom
-``Client`` class in your test case::
+If you want to use a different ``Client`` class (for example, a subclass
+with customized behavior), use the :attr:`~TestCase.client_class` class
+attribute::
 
     from django.test import TestCase
     from django.test.client import Client
 
     class MyTestClient(Client):
-        # .. specialized methods for your environment ..
+        # Specialized methods for your environment...
 
     class MyTest(TestCase):
         client_class = MyTestClient
 
         def test_my_stuff(self):
-            # .. Here self.client is an instance of MyTestClient ..
+            # Here self.client is an instance of MyTestClient...
 
 .. _topics-testing-fixtures:
 
@@ -1419,7 +1418,7 @@ cause of an failure in your test suite.
     implicit ordering, you will need to apply a ``order_by()`` clause to your
     queryset to ensure that the test will pass reliably.
 
-.. method:: TestCase.assertNumQueries(num, func, *args, **kwargs):
+.. method:: TestCase.assertNumQueries(num, func, *args, **kwargs)
 
     .. versionadded:: 1.3
 

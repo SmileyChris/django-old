@@ -82,6 +82,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     uses_savepoints = True
     requires_rollback_on_dirty_transaction = True
     has_real_datatype = True
+    can_defer_constraint_checks = True
 
 class DatabaseWrapper(BaseDatabaseWrapper):
     vendor = 'postgresql'
@@ -152,6 +153,13 @@ class DatabaseWrapper(BaseDatabaseWrapper):
                 self.features.uses_savepoints = False
             cursor.execute("SET client_encoding to 'UNICODE'")
         return UnicodeCursorWrapper(cursor, 'utf-8')
+
+    def _commit(self):
+        if self.connection is not None:
+            try:
+                return self.connection.commit()
+            except Database.IntegrityError, e:
+                raise utils.IntegrityError, utils.IntegrityError(*tuple(e)), sys.exc_info()[2]
 
 def typecast_string(s):
     """

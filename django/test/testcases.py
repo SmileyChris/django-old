@@ -11,6 +11,7 @@ from django.db import transaction, connection, connections, DEFAULT_DB_ALIAS
 from django.http import QueryDict
 from django.test import _doctest as doctest
 from django.test.client import Client
+from django.test.utils import get_warnings_state, restore_warnings_state
 from django.utils import simplejson, unittest as ut2
 from django.utils.encoding import smart_str
 from django.utils.functional import wraps
@@ -305,9 +306,20 @@ class TransactionTestCase(ut2.TestCase):
         """ Performs any post-test things. This includes:
 
             * Putting back the original ROOT_URLCONF if it was changed.
+            * Force closing the connection, so that the next test gets
+              a clean cursor.
         """
         self._fixture_teardown()
         self._urlconf_teardown()
+        # Some DB cursors include SQL statements as part of cursor
+        # creation. If you have a test that does rollback, the effect
+        # of these statements is lost, which can effect the operation
+        # of tests (e.g., losing a timezone setting causing objects to
+        # be created with the wrong time).
+        # To make sure this doesn't happen, get a clean connection at the
+        # start of every test.
+        for connection in connections.all():
+            connection.close()
 
     def _fixture_teardown(self):
         pass
@@ -316,6 +328,19 @@ class TransactionTestCase(ut2.TestCase):
         if hasattr(self, '_old_root_urlconf'):
             settings.ROOT_URLCONF = self._old_root_urlconf
             clear_url_caches()
+
+    def save_warnings_state(self):
+        """
+        Saves the state of the warnings module
+        """
+        self._warnings_state = get_warnings_state()
+
+    def restore_warnings_state(self):
+        """
+        Restores the sate of the warnings module to the state
+        saved by save_warnings_state()
+        """
+        restore_warnings_state(self._warnings_state)
 
     def assertRedirects(self, response, expected_url, status_code=302,
                         target_status_code=200, host=None, msg_prefix=''):
@@ -397,7 +422,7 @@ class TransactionTestCase(ut2.TestCase):
                 msg_prefix + "Found %d instances of '%s' in response"
                 " (expected %d)" % (real_count, text, count))
         else:
-            self.failUnless(real_count != 0,
+            self.assertTrue(real_count != 0,
                 msg_prefix + "Couldn't find '%s' in response" % text)
 
     def assertNotContains(self, response, text, status_code=200,
@@ -513,7 +538,10 @@ class TransactionTestCase(ut2.TestCase):
         context.__enter__()
         try:
             func(*args, **kwargs)
-        finally:
+        except:
+            context.__exit__(*sys.exc_info())
+            raise
+        else:
             context.__exit__(*sys.exc_info())
 
 def connections_support_transactions():
@@ -574,9 +602,6 @@ class TestCase(TransactionTestCase):
         for db in databases:
             transaction.rollback(using=db)
             transaction.leave_transaction_management(using=db)
-
-        for connection in connections.all():
-            connection.close()
 
 def _deferredSkip(condition, reason):
     def decorator(test_func):

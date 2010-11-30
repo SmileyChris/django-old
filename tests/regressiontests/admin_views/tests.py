@@ -3,6 +3,7 @@
 import re
 import datetime
 from django.conf import settings
+from django.core import mail
 from django.core.files import temp as tempfile
 from django.contrib.auth import admin # Register auth models with the admin.
 from django.contrib.auth.models import User, Permission, UNUSABLE_PASSWORD
@@ -18,7 +19,8 @@ from django.utils import formats
 from django.utils.cache import get_max_age
 from django.utils.encoding import iri_to_uri
 from django.utils.html import escape
-from django.utils.translation import get_date_formats, activate, deactivate
+from django.utils.http import urlencode
+from django.utils.translation import activate, deactivate
 from django.utils import unittest
 
 # local test models
@@ -26,11 +28,12 @@ from models import Article, BarAccount, CustomArticle, EmptyModel, \
     FooAccount, Gallery, ModelWithStringPrimaryKey, \
     Person, Persona, Picture, Podcast, Section, Subscriber, Vodcast, \
     Language, Collector, Widget, Grommet, DooHickey, FancyDoodad, Whatsit, \
-    Category, Post, Plot, FunkyTag
+    Category, Post, Plot, FunkyTag, Chapter, Book, Promo
 
 
 class AdminViewBasicTest(TestCase):
-    fixtures = ['admin-views-users.xml', 'admin-views-colors.xml', 'admin-views-fabrics.xml']
+    fixtures = ['admin-views-users.xml', 'admin-views-colors.xml',
+                'admin-views-fabrics.xml', 'admin-views-books.xml']
 
     # Store the bit of the URL where the admin is registered as a class
     # variable. That way we can test a second AdminSite just by subclassing
@@ -203,7 +206,9 @@ class AdminViewBasicTest(TestCase):
         )
 
     def testLimitedFilter(self):
-        """Ensure admin changelist filters do not contain objects excluded via limit_choices_to."""
+        """Ensure admin changelist filters do not contain objects excluded via limit_choices_to.
+        This also tests relation-spanning filters (e.g. 'color__value').
+        """
         response = self.client.get('/test_admin/%s/admin_views/thing/' % self.urlbit)
         self.failUnlessEqual(response.status_code, 200)
         self.failUnless(
@@ -214,6 +219,47 @@ class AdminViewBasicTest(TestCase):
             '<a href="?color__id__exact=3">Blue</a>' in response.content,
             "Changelist filter not correctly limited by limit_choices_to."
         )
+
+    def testRelationSpanningFilters(self):
+        response = self.client.get('/test_admin/%s/admin_views/chapterxtra1/' %
+                                   self.urlbit)
+        self.failUnlessEqual(response.status_code, 200)
+        self.assertContains(response, '<div id="changelist-filter">')
+        filters = {
+            'chap__id__exact': dict(
+                values=[c.id for c in Chapter.objects.all()],
+                test=lambda obj, value: obj.chap.id == value),
+            'chap__title': dict(
+                values=[c.title for c in Chapter.objects.all()],
+                test=lambda obj, value: obj.chap.title == value),
+            'chap__book__id__exact': dict(
+                values=[b.id for b in Book.objects.all()],
+                test=lambda obj, value: obj.chap.book.id == value),
+            'chap__book__name': dict(
+                values=[b.name for b in Book.objects.all()],
+                test=lambda obj, value: obj.chap.book.name == value),
+            'chap__book__promo__id__exact': dict(
+                values=[p.id for p in Promo.objects.all()],
+                test=lambda obj, value:
+                    obj.chap.book.promo_set.filter(id=value).exists()),
+            'chap__book__promo__name': dict(
+                values=[p.name for p in Promo.objects.all()],
+                test=lambda obj, value:
+                    obj.chap.book.promo_set.filter(name=value).exists()),
+            }
+        for filter_path, params in filters.items():
+            for value in params['values']:
+                query_string = urlencode({filter_path: value})
+                # ensure filter link exists
+                self.assertContains(response, '<a href="?%s">' % query_string)
+                # ensure link works
+                filtered_response = self.client.get(
+                    '/test_admin/%s/admin_views/chapterxtra1/?%s' % (
+                        self.urlbit, query_string))
+                self.failUnlessEqual(filtered_response.status_code, 200)
+                # ensure changelist contains only valid objects
+                for obj in filtered_response.context['cl'].query_set.all():
+                    self.assertTrue(params['test'](obj, value))
 
     def testIncorrectLookupParameters(self):
         """Ensure incorrect lookup parameters are handled gracefully."""
@@ -540,6 +586,8 @@ class AdminViewPermissionsTest(TestCase):
         post = self.client.post('/test_admin/admin/admin_views/article/add/', add_dict)
         self.assertRedirects(post, '/test_admin/admin/')
         self.failUnlessEqual(Article.objects.all().count(), 4)
+        self.assertEquals(len(mail.outbox), 1)
+        self.assertEquals(mail.outbox[0].subject, 'Greetings from a created object')
         self.client.get('/test_admin/admin/logout/')
 
         # Super can add too, but is redirected to the change list view
@@ -695,6 +743,8 @@ class AdminViewPermissionsTest(TestCase):
         post = self.client.post('/test_admin/admin/admin_views/article/1/delete/', delete_dict)
         self.assertRedirects(post, '/test_admin/admin/')
         self.failUnlessEqual(Article.objects.all().count(), 2)
+        self.assertEquals(len(mail.outbox), 1)
+        self.assertEquals(mail.outbox[0].subject, 'Greetings from a deleted object')
         article_ct = ContentType.objects.get_for_model(Article)
         logged = LogEntry.objects.get(content_type=article_ct, action_flag=DELETION)
         self.failUnlessEqual(logged.object_id, u'1')
@@ -1440,8 +1490,6 @@ class AdminInheritedInlinesTest(TestCase):
         self.failUnlessEqual(BarAccount.objects.all()[0].username, "%s-1" % bar_user)
         self.failUnlessEqual(Persona.objects.all()[0].accounts.count(), 2)
 
-from django.core import mail
-
 class AdminActionsTest(TestCase):
     fixtures = ['admin-views-users.xml', 'admin-views-actions.xml']
 
@@ -1538,7 +1586,7 @@ class AdminActionsTest(TestCase):
     def test_action_column_class(self):
         "Tests that the checkbox column class is present in the response"
         response = self.client.get('/test_admin/admin/admin_views/subscriber/')
-        self.assertNotEquals(response.context["action_form"], None)
+        self.assertNotEqual(response.context["action_form"], None)
         self.assert_('action-checkbox-column' in response.content,
             "Expected an action-checkbox-column in response")
 
@@ -2164,7 +2212,19 @@ class UserAdminTest(TestCase):
     def tearDown(self):
         self.client.logout()
 
-    def test_user_creation(self):
+    def test_save_button(self):
+        user_count = User.objects.count()
+        response = self.client.post('/test_admin/admin/auth/user/add/', {
+            'username': 'newuser',
+            'password1': 'newpassword',
+            'password2': 'newpassword',
+        })
+        new_user = User.objects.order_by('-id')[0]
+        self.assertRedirects(response, '/test_admin/admin/auth/user/%s/' % new_user.pk)
+        self.assertEqual(User.objects.count(), user_count + 1)
+        self.assertNotEqual(new_user.password, UNUSABLE_PASSWORD)
+
+    def test_save_continue_editing_button(self):
         user_count = User.objects.count()
         response = self.client.post('/test_admin/admin/auth/user/add/', {
             'username': 'newuser',
@@ -2174,8 +2234,8 @@ class UserAdminTest(TestCase):
         })
         new_user = User.objects.order_by('-id')[0]
         self.assertRedirects(response, '/test_admin/admin/auth/user/%s/' % new_user.pk)
-        self.assertEquals(User.objects.count(), user_count + 1)
-        self.assertNotEquals(new_user.password, UNUSABLE_PASSWORD)
+        self.assertEqual(User.objects.count(), user_count + 1)
+        self.assertNotEqual(new_user.password, UNUSABLE_PASSWORD)
 
     def test_password_mismatch(self):
         response = self.client.post('/test_admin/admin/auth/user/add/', {
@@ -2183,21 +2243,22 @@ class UserAdminTest(TestCase):
             'password1': 'newpassword',
             'password2': 'mismatch',
         })
-        self.assertEquals(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
         adminform = response.context['adminform']
-        self.assert_('password' not in adminform.form.errors)
-        self.assertEquals(adminform.form.errors['password2'],
+        self.assertTrue('password' not in adminform.form.errors)
+        self.assertEqual(adminform.form.errors['password2'],
                           [u"The two password fields didn't match."])
 
     def test_user_fk_popup(self):
         response = self.client.get('/test_admin/admin/admin_views/album/add/')
-        self.failUnlessEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200)
         self.assertContains(response, '/test_admin/admin/auth/user/add')
         self.assertContains(response, 'class="add-another" id="add_id_owner" onclick="return showAddAnotherPopup(this);"')
         response = self.client.get('/test_admin/admin/auth/user/add/?_popup=1')
         self.assertNotContains(response, 'name="_continue"')
+        self.assertNotContains(response, 'name="_addanother"')
 
-    def test_user_add_another(self):
+    def test_save_add_another_button(self):
         user_count = User.objects.count()
         response = self.client.post('/test_admin/admin/auth/user/add/', {
             'username': 'newuser',
@@ -2207,8 +2268,8 @@ class UserAdminTest(TestCase):
         })
         new_user = User.objects.order_by('-id')[0]
         self.assertRedirects(response, '/test_admin/admin/auth/user/add/')
-        self.assertEquals(User.objects.count(), user_count + 1)
-        self.assertNotEquals(new_user.password, UNUSABLE_PASSWORD)
+        self.assertEqual(User.objects.count(), user_count + 1)
+        self.assertNotEqual(new_user.password, UNUSABLE_PASSWORD)
 
 try:
     import docutils

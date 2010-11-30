@@ -24,7 +24,7 @@ class BaseDatabaseWrapper(local):
         self.use_debug_cursor = None
 
     def __eq__(self, other):
-        return self.settings_dict == other.settings_dict
+        return self.alias == other.alias
 
     def __ne__(self, other):
         return not self == other
@@ -150,6 +150,10 @@ class BaseDatabaseFeatures(object):
     # Can an object have a primary key of 0? MySQL says No.
     allows_primary_key_0 = True
 
+    # Do we need to NULL a ForeignKey out, or can the constraint check be
+    # deferred
+    can_defer_constraint_checks = False
+
     # Features that need to be confirmed at runtime
     # Cache whether the confirmation has been performed.
     _confirmed = False
@@ -185,7 +189,7 @@ class BaseDatabaseFeatures(object):
 
         try:
             self.connection.ops.check_aggregate_support(StdDevPop())
-        except DatabaseError:
+        except NotImplementedError:
             self.supports_stddev = False
 
 
@@ -615,7 +619,12 @@ class BaseDatabaseIntrospection(object):
                 tables.add(model._meta.db_table)
                 tables.update([f.m2m_db_table() for f in model._meta.local_many_to_many])
         if only_existing:
-            tables = [t for t in tables if self.table_name_converter(t) in self.table_names()]
+            existing_tables = self.table_names()
+            tables = [
+                t
+                for t in tables
+                if self.table_name_converter(t) in existing_tables
+            ]
         return tables
 
     def installed_models(self, tables):
@@ -626,8 +635,10 @@ class BaseDatabaseIntrospection(object):
             for model in models.get_models(app):
                 if router.allow_syncdb(self.connection.alias, model):
                     all_models.append(model)
-        return set([m for m in all_models
-            if self.table_name_converter(m._meta.db_table) in map(self.table_name_converter, tables)
+        tables = map(self.table_name_converter, tables)
+        return set([
+            m for m in all_models
+            if self.table_name_converter(m._meta.db_table) in tables
         ])
 
     def sequence_list(self):
