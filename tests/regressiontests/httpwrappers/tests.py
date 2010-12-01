@@ -76,6 +76,10 @@ class QueryDictTests(unittest.TestCase):
         q['next'] = '/a&b/'
         self.assertEqual(q.urlencode(), 'next=%2Fa%26b%2F')
         self.assertEqual(q.urlencode(safe='/'), 'next=/a%26b/')
+        q = QueryDict('', mutable=True)
+        q['next'] = u'/t\xebst&key/'
+        self.assertEqual(q.urlencode(), 'next=%2Ft%C3%ABst%26key%2F')
+        self.assertEqual(q.urlencode(safe='/'), 'next=/t%C3%ABst%26key/')
 
     def test_mutable_copy(self):
         """A copy of a QueryDict is mutable."""
