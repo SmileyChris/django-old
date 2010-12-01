@@ -367,24 +367,26 @@ class QueryDict(MultiValueDict):
         """
         Returns an encoded string of all query string arguments.
 
-        :arg safe: Used to specify characters which do not require quoting, e.g.::
+        :arg safe: Used to specify characters which do not require quoting, for
+            example::
 
-            >>> q = QueryDict('', mutable=True)
-            >>> q['next'] = '/a&b/'
-            >>> q.urlencode()
-            'next=%2Fa%26b%2F'
-            >>> q.urlencode(safe='/')
-            'next=/a%26b/'
+                >>> q = QueryDict('', mutable=True)
+                >>> q['next'] = '/a&b/'
+                >>> q.urlencode()
+                'next=%2Fa%26b%2F'
+                >>> q.urlencode(safe='/')
+                'next=/a%26b/'
 
         """
         output = []
         if safe:
-            encode = lambda k, v: u'%s=%s' % ((quote(k, safe), quote(v, safe)))
+            encode = lambda k, v: '%s=%s' % ((quote(k, safe), quote(v, safe)))
         else:
             encode = lambda k, v: urlencode({k: v})
         for k, list_ in self.lists():
             k = smart_str(k, self.encoding)
-            output.extend([encode(k, smart_str(v, self.encoding)) for v in list_])
+            output.extend([encode(k, smart_str(v, self.encoding))
+                           for v in list_])
         return '&'.join(output)
 
 class CompatCookie(SimpleCookie):

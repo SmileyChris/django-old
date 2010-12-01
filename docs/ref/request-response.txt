@@ -442,12 +442,14 @@ In addition, ``QueryDict`` has the following methods:
         >>> q.urlencode()
         'a=2&b=3&b=5'
 
-    .. versionadded:: 1.3
+    .. versionchanged:: 1.3
+       The ``safe`` parameter was added.
 
     Optionally, urlencode can be passed characters which
     do not require encoding. For example::
 
-        >>> q = QueryDict('/a&b/')
+        >>> q = QueryDict('', mutable=True)
+        >>> q['next'] = '/a&b/'
         >>> q.urlencode(safe='/')
         'next=/a%26b/'
 
