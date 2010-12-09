@@ -90,7 +90,7 @@ class ListViewTests(TestCase):
         self._make_authors(7)
         res = self.client.get('/list/authors/paginated/custom_class/')
         self.assertEqual(res.status_code, 200)
-        self.assertIsInstance(res.context['paginator'], CustomPaginator)
+        self.assertIsNone(res.context['paginator'])
         # Custom pagination allows for 2 orphans on a page size of 5
         self.assertEqual(len(res.context['object_list']), 7)
 
