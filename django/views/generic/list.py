@@ -34,7 +34,7 @@ class MultipleObjectMixin(object):
         """
         paginator = self.get_paginator(queryset, page_size, allow_empty_first_page=self.get_allow_empty())
         if paginator.num_pages > 1:
-            page = self.kwargs.get('page', None) or self.request.GET.get('page', 1)
+            page = self.kwargs.get('page') or self.request.GET.get('page') or 1
             try:
                 page_number = int(page)
             except ValueError:
