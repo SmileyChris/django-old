@@ -6,16 +6,38 @@ Requires cx_Oracle: http://cx-oracle.sourceforge.net/
 
 
 import datetime
-import os
 import sys
 import time
 from decimal import Decimal
 
-# Oracle takes client-side character set encoding from the environment.
-os.environ['NLS_LANG'] = '.UTF8'
-# This prevents unicode from getting mangled by getting encoded into the
-# potentially non-unicode database character set.
-os.environ['ORA_NCHAR_LITERAL_REPLACE'] = 'TRUE'
+
+def _setup_environment(environ):
+    import platform
+    # Cygwin requires some special voodoo to set the environment variables
+    # properly so that Oracle will see them.
+    if platform.system().upper().startswith('CYGWIN'):
+        try:
+            import ctypes
+        except ImportError, e:
+            from django.core.exceptions import ImproperlyConfigured
+            raise ImproperlyConfigured("Error loading ctypes: %s; "
+                                       "the Oracle backend requires ctypes to "
+                                       "operate correctly under Cygwin." % e)
+        kernel32 = ctypes.CDLL('kernel32')
+        for name, value in environ:
+            kernel32.SetEnvironmentVariableA(name, value)
+    else:
+        import os
+        os.environ.update(environ)
+
+_setup_environment([
+    # Oracle takes client-side character set encoding from the environment.
+    ('NLS_LANG', '.UTF8'),
+    # This prevents unicode from getting mangled by getting encoded into the
+    # potentially non-unicode database character set.
+    ('ORA_NCHAR_LITERAL_REPLACE', 'TRUE'),
+])
+
 
 try:
     import cx_Oracle as Database
@@ -351,6 +373,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
         self.oracle_version = None
         self.features = DatabaseFeatures(self)
+        use_returning_into = self.settings_dict["OPTIONS"].get('use_returning_into', True)
+        self.features.can_return_id_from_insert = use_returning_into
         self.ops = DatabaseOperations()
         self.client = DatabaseClient(self)
         self.creation = DatabaseCreation(self)
@@ -377,7 +401,10 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         cursor = None
         if not self._valid_connection():
             conn_string = convert_unicode(self._connect_string())
-            self.connection = Database.connect(conn_string, **self.settings_dict['OPTIONS'])
+            conn_params = self.settings_dict['OPTIONS'].copy()
+            if 'use_returning_into' in conn_params:
+                del conn_params['use_returning_into']
+            self.connection = Database.connect(conn_string, **conn_params)
             cursor = FormatStylePlaceholderCursor(self.connection)
             # Set oracle date to ansi date format.  This only needs to execute
             # once when we create a new connection. We also set the Territory

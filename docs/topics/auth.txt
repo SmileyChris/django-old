@@ -212,7 +212,7 @@ Methods
 
     .. method:: models.User.get_group_permissions(obj=None)
 
-        Returns a list of permission strings that the user has, through his/her
+        Returns a set of permission strings that the user has, through his/her
         groups.
 
         .. versionadded:: 1.2
@@ -222,7 +222,7 @@ Methods
 
     .. method:: models.User.get_all_permissions(obj=None)
 
-        Returns a list of permission strings that the user has, both through
+        Returns a set of permission strings that the user has, both through
         group and user permissions.
 
         .. versionadded:: 1.2
@@ -840,6 +840,7 @@ The login_required decorator
     .. code-block:: html+django
 
         {% extends "base.html" %}
+        {% load url from future %}
 
         {% block content %}
 
@@ -847,7 +848,7 @@ The login_required decorator
         <p>Your username and password didn't match. Please try again.</p>
         {% endif %}
 
-        <form method="post" action="{% url django.contrib.auth.views.login %}">
+        <form method="post" action="{% url 'django.contrib.auth.views.login' %}">
         {% csrf_token %}
         <table>
         <tr>
