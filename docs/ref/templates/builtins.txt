@@ -1078,7 +1078,7 @@ You can assign more than one context variable::
     {% endwith %}
 
 .. note:: The previous more verbose format is still supported:
-{% with business.employees.count as total %}
+   ``{% with business.employees.count as total %}``
 
 .. _ref-templates-builtins-filters:
 

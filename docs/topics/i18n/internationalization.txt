@@ -498,7 +498,7 @@ same :ref:`notes regarding ungettext variables <pluralization-var-notes>`
 apply.
 
 .. note:: The previous more verbose format is still supported:
-{% blocktrans with book|title as book_t and author|title as author_t %}
+   ``{% blocktrans with book|title as book_t and author|title as author_t %}``
 
 .. _template-translation-vars:
 
