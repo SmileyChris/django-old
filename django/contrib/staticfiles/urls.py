@@ -25,4 +25,6 @@ def staticfiles_urlpatterns(prefix=None):
     if prefix.startswith("/"):
         prefix = prefix[1:]
     return patterns('',
-        url(r'^%s' % re.escape(prefix), include(urlpatterns)),)
+        url(r'^(?P<index_prefix>%s)' % re.escape(prefix),
+            include(urlpatterns), {'show_indexes': True}),
+    )

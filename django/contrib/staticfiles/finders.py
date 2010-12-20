@@ -36,6 +36,13 @@ class BaseFinder(object):
         """
         raise NotImplementedError()
 
+    def listdir(self, path):
+        """
+        List a path's contents returning a 2-tuple of lists; the first list
+        being directories, the second list being files.
+        """
+        raise NotImplementedError()
+
 
 class FileSystemFinder(BaseFinder):
     """
@@ -96,6 +103,17 @@ class FileSystemFinder(BaseFinder):
             for path in utils.get_files(storage, ignore_patterns):
                 yield path, prefix, storage
 
+    def listdir(self, path):
+        """
+        List all files and dirs for one path.
+        """
+        dirs, files = [], []
+        for prefix, root in self.locations:
+            partial_listdir = utils.storage_listdir(self.storages[root],
+                                                    path, prefix)
+            utils.combine_listdir(dirs, files, partial_listdir)
+        return dirs, files
+
 
 class AppDirectoriesFinder(BaseFinder):
     """
@@ -123,6 +141,17 @@ class AppDirectoriesFinder(BaseFinder):
                 prefix = storage.get_prefix()
                 for path in utils.get_files(storage, ignore_patterns):
                     yield path, prefix, storage
+
+    def listdir(self, path):
+        """
+        List all files and dirs in all app storages (for one path).
+        """
+        dirs, files = [], []
+        for storage in self.storages.itervalues():
+            partial_listdir = utils.storage_listdir(storage, path,
+                                                    storage.get_prefix())
+            utils.combine_listdir(dirs, files, partial_listdir)
+        return dirs, files
 
     def find(self, path, all=False):
         """
@@ -197,6 +226,17 @@ class BaseStorageFinder(BaseFinder):
         for path in utils.get_files(self.storage, ignore_patterns):
             yield path, '', self.storage
 
+    def listdir(self, path):
+        """
+        List all files and dirs in all app storages (for one path).
+        """
+        dirs, files = [], []
+        for storage in self.storages.itervalues():
+            if storage.exists(''): # check if storage location exists
+                utils.combine_listdir(dirs, files, storage.listdir(path))
+        return dirs, files
+
+
 class DefaultStorageFinder(BaseStorageFinder):
     """
     A static files finder that uses the default storage backend.
@@ -230,9 +270,23 @@ def find(path, all=False):
     # No match.
     return all and [] or None
 
+
+def listdir(path):
+    """
+    Find all files and directories in a given path across all finders.
+    
+    Returns a 2-tuple containing a list of directories and 
+    """
+    dirs, files = [], []
+    for finder in get_finders():
+        utils.combine_listdir(dirs, files, finder.listdir(path))
+    return dirs, files
+
+
 def get_finders():
     for finder_path in settings.STATICFILES_FINDERS:
         yield get_finder(finder_path)
+
 
 def _get_finder(import_path):
     """

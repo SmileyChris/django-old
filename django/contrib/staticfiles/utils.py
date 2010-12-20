@@ -2,6 +2,7 @@ import fnmatch
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
+
 def get_files(storage, ignore_patterns=[], location=''):
     """
     Recursively walk the storage directories gathering a complete list of files
@@ -31,6 +32,7 @@ def get_files(storage, ignore_patterns=[], location=''):
         static_files.extend(get_files(storage, ignore_patterns, dir))
     return static_files
 
+
 def check_settings():
     """
     Checks if the MEDIA_(ROOT|URL) and STATIC_(ROOT|URL)
@@ -43,3 +45,30 @@ def check_settings():
             (settings.MEDIA_ROOT == settings.STATIC_ROOT)):
         raise ImproperlyConfigured("The MEDIA_ROOT and STATIC_ROOT "
                                    "settings must have different values")
+
+
+def combine_listdir(all_dirs, all_files, partial_listdir):
+    """
+    Combines a 2-tuple containing a list of directories and a list files into
+    master lists of directories and files. 
+    """
+    dirs, files = partial_listdir
+    for dir in dirs:
+        if dir not in all_dirs:
+            all_dirs.append(dir)
+    for file in files:
+        if file not in all_files:
+            all_files.append(file)
+
+
+def storage_listdir(storage, path, prefix=None):
+    if prefix:
+        prefix += '/'
+        if not path.startswith(prefix):
+            return [], []
+    else:
+        prefix = ''
+    path = path[len(prefix):]
+    if not storage.exists(path):
+        return [], []
+    return storage.listdir(path)
