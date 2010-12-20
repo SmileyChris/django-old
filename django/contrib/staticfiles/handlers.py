@@ -13,6 +13,8 @@ class StaticFilesHandler(WSGIHandler):
     WSGI middleware that intercepts calls to the static files directory, as
     defined by the STATIC_URL setting, and serves those files.
     """
+    show_indexes = False
+
     def __init__(self, application, base_dir=None):
         self.application = application
         if base_dir:
@@ -41,8 +43,7 @@ class StaticFilesHandler(WSGIHandler):
         * the host is provided as part of the base_url
         * the request's path isn't under the media path (or equal)
         """
-        return (self.base_url[2] != path and
-            path.startswith(self.base_url[2]) and not self.base_url[1])
+        return (path.startswith(self.base_url[2]) and not self.base_url[1])
 
     def file_path(self, url):
         """
@@ -55,7 +56,12 @@ class StaticFilesHandler(WSGIHandler):
         """
         Actually serves the request path.
         """
-        return serve(request, self.file_path(request.path), insecure=True)
+        if self.show_indexes:
+            kwargs = dict(show_indexes=True, index_prefix=self.base_url[2])
+        else:
+            kwargs = {}
+        return serve(request, self.file_path(request.path), insecure=True,
+                     **kwargs)
 
     def get_response(self, request):
         from django.http import Http404

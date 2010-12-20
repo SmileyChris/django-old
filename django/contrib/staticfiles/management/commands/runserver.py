@@ -11,6 +11,8 @@ class Command(BaseRunserverCommand):
             help='Tells Django to NOT automatically serve static files at STATIC_URL.'),
         make_option('--insecure', action="store_true", dest='insecure_serving', default=False,
             help='Allows serving static files even if DEBUG is False.'),
+        make_option('--show-indexes', action="store_true",
+            help='Show static directory indexes.'),
     )
     help = "Starts a lightweight Web server for development, including static files serving."
 
@@ -24,4 +26,5 @@ class Command(BaseRunserverCommand):
         if (settings.DEBUG and use_static_handler or
                 (use_static_handler and insecure_serving)):
             handler = StaticFilesHandler(handler)
+            handler.show_indexes = options.get('show_indexes')
         return handler
