@@ -307,7 +307,7 @@ into the primary key of an actual ``Person`` object.
     fields will be effectively unique, you can still use those fields
     as a natural key.
 
-.. versionadded:: 1.3
+.. versionchanged:: 1.3
 
 Deserialization of objects with no primary key will always check whether the
 model's manager has a ``get_by_natural_key()`` method and if so, use it to
@@ -359,7 +359,7 @@ use the `--natural` command line flag to generate natural keys.
     natural keys during serialization, but *not* be able to load those
     key values, just don't define the ``get_by_natural_key()`` method.
 
-.. versionadded:: 1.3
+.. versionchanged:: 1.3
 
 When ``use_natural_keys=True`` is specified, the primary key is no longer
 provided in the serialized data of this object since it can be calculated
