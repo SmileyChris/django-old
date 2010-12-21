@@ -2,6 +2,7 @@ import datetime
 import urllib
 
 from django.contrib import auth
+from django.contrib.auth.signals import user_logged_in
 from django.core.exceptions import ImproperlyConfigured
 from django.db import models
 from django.db.models.manager import EmptyManager
@@ -39,6 +40,15 @@ def check_password(raw_password, enc_password):
     """
     algo, salt, hsh = enc_password.split('$')
     return hsh == get_hexdigest(algo, salt, raw_password)
+
+def update_last_login(sender, user, **kwargs):
+    """
+    A signal receiver which updates the last_login date for
+    the user logging in.
+    """
+    user.last_login = datetime.datetime.now()
+    user.save()
+user_logged_in.connect(update_last_login)
 
 class SiteProfileNotAvailable(Exception):
     pass
@@ -106,9 +116,8 @@ class UserManager(models.Manager):
         """
         Creates and saves a User with the given username, e-mail and password.
         """
-
         now = datetime.datetime.now()
-        
+
         # Normalize the address by lowercasing the domain part of the email
         # address.
         try:
@@ -122,10 +131,7 @@ class UserManager(models.Manager):
                          is_active=True, is_superuser=False, last_login=now,
                          date_joined=now)
 
-        if password:
-            user.set_password(password)
-        else:
-            user.set_unusable_password()
+        user.set_password(password)
         user.save(using=self._db)
         return user
 
@@ -238,11 +244,14 @@ class User(models.Model):
         return full_name.strip()
 
     def set_password(self, raw_password):
-        import random
-        algo = 'sha1'
-        salt = get_hexdigest(algo, str(random.random()), str(random.random()))[:5]
-        hsh = get_hexdigest(algo, salt, raw_password)
-        self.password = '%s$%s$%s' % (algo, salt, hsh)
+        if raw_password is None:
+            self.set_unusable_password()
+        else:
+            import random
+            algo = 'sha1'
+            salt = get_hexdigest(algo, str(random.random()), str(random.random()))[:5]
+            hsh = get_hexdigest(algo, salt, raw_password)
+            self.password = '%s$%s$%s' % (algo, salt, hsh)
 
     def check_password(self, raw_password):
         """
@@ -265,7 +274,11 @@ class User(models.Model):
         self.password = UNUSABLE_PASSWORD
 
     def has_usable_password(self):
-        return self.password != UNUSABLE_PASSWORD
+        if self.password is None \
+            or self.password == UNUSABLE_PASSWORD:
+            return False
+        else:
+            return True
 
     def get_group_permissions(self, obj=None):
         """
@@ -377,7 +390,7 @@ class User(models.Model):
         import warnings
         warnings.warn('The user messaging API is deprecated. Please update'
                       ' your code to use the new messages framework.',
-                      category=PendingDeprecationWarning)
+                      category=DeprecationWarning)
         return self._message_set
     message_set = property(_get_message_set)
 

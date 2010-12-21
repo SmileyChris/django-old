@@ -20,8 +20,12 @@ testing against the contexts and templates produced by a view,
 rather than the HTML rendered to the end-user.
 
 """
-from django.test import Client, TestCase
+from django.conf import settings
 from django.core import mail
+from django.test import Client, TestCase, RequestFactory
+
+from views import get_view
+
 
 class ClientTest(TestCase):
     fixtures = ['testdata.json']
@@ -36,7 +40,7 @@ class ClientTest(TestCase):
         # Check some response details
         self.assertContains(response, 'This is a test')
         self.assertEqual(response.context['var'], u'\xf2')
-        self.assertEqual(response.template.name, 'GET Template')
+        self.assertEqual(response.templates[0].name, 'GET Template')
 
     def test_get_post_view(self):
         "GET a view that normally expects POSTs"
@@ -44,7 +48,7 @@ class ClientTest(TestCase):
 
         # Check some response details
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.template.name, 'Empty GET Template')
+        self.assertEqual(response.templates[0].name, 'Empty GET Template')
         self.assertTemplateUsed(response, 'Empty GET Template')
         self.assertTemplateNotUsed(response, 'Empty POST Template')
 
@@ -54,7 +58,7 @@ class ClientTest(TestCase):
 
         # Check some response details
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.template.name, 'Empty POST Template')
+        self.assertEqual(response.templates[0].name, 'Empty POST Template')
         self.assertTemplateNotUsed(response, 'Empty GET Template')
         self.assertTemplateUsed(response, 'Empty POST Template')
 
@@ -68,8 +72,8 @@ class ClientTest(TestCase):
         # Check some response details
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context['data'], '37')
-        self.assertEqual(response.template.name, 'POST Template')
-        self.failUnless('Data received' in response.content)
+        self.assertEqual(response.templates[0].name, 'POST Template')
+        self.assertTrue('Data received' in response.content)
 
     def test_response_headers(self):
         "Check the value of HTTP headers returned in a response"
@@ -83,7 +87,7 @@ class ClientTest(TestCase):
         response = self.client.post("/test_client/raw_post_view/", test_doc,
                                     content_type="text/xml")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.template.name, "Book template")
+        self.assertEqual(response.templates[0].name, "Book template")
         self.assertEqual(response.content, "Blink - Malcolm Gladwell")
 
     def test_redirect(self):
@@ -274,7 +278,7 @@ class ClientTest(TestCase):
 
         # Log in
         login = self.client.login(username='testclient', password='password')
-        self.failUnless(login, 'Could not log in')
+        self.assertTrue(login, 'Could not log in')
 
         # Request a page that requires a login
         response = self.client.get('/test_client/login_protected_view/')
@@ -290,7 +294,7 @@ class ClientTest(TestCase):
 
         # Log in
         login = self.client.login(username='testclient', password='password')
-        self.failUnless(login, 'Could not log in')
+        self.assertTrue(login, 'Could not log in')
 
         # Request a page that requires a login
         response = self.client.get('/test_client/login_protected_method_view/')
@@ -306,7 +310,7 @@ class ClientTest(TestCase):
 
         # Log in
         login = self.client.login(username='testclient', password='password')
-        self.failUnless(login, 'Could not log in')
+        self.assertTrue(login, 'Could not log in')
 
         # Request a page that requires a login
         response = self.client.get('/test_client/login_protected_view_custom_redirect/')
@@ -317,13 +321,13 @@ class ClientTest(TestCase):
         "Request a page that is protected with @login, but use bad credentials"
 
         login = self.client.login(username='otheruser', password='nopassword')
-        self.failIf(login)
+        self.assertFalse(login)
 
     def test_view_with_inactive_login(self):
         "Request a page that is protected with @login, but use an inactive login"
 
         login = self.client.login(username='inactive', password='password')
-        self.failIf(login)
+        self.assertFalse(login)
 
     def test_logout(self):
         "Request a logout after logging in"
@@ -351,7 +355,7 @@ class ClientTest(TestCase):
 
         # Log in
         login = self.client.login(username='testclient', password='password')
-        self.failUnless(login, 'Could not log in')
+        self.assertTrue(login, 'Could not log in')
 
         # Log in with wrong permissions. Should result in 302.
         response = self.client.get('/test_client/permission_protected_view/')
@@ -368,7 +372,7 @@ class ClientTest(TestCase):
 
         # Log in
         login = self.client.login(username='testclient', password='password')
-        self.failUnless(login, 'Could not log in')
+        self.assertTrue(login, 'Could not log in')
 
         # Log in with wrong permissions. Should result in 302.
         response = self.client.get('/test_client/permission_protected_method_view/')
@@ -433,3 +437,47 @@ class ClientTest(TestCase):
         self.assertEqual(mail.outbox[1].from_email, 'from@example.com')
         self.assertEqual(mail.outbox[1].to[0], 'second@example.com')
         self.assertEqual(mail.outbox[1].to[1], 'third@example.com')
+
+class CSRFEnabledClientTests(TestCase):
+    def setUp(self):
+        # Enable the CSRF middleware for this test
+        self.old_MIDDLEWARE_CLASSES = settings.MIDDLEWARE_CLASSES
+        csrf_middleware_class = 'django.middleware.csrf.CsrfViewMiddleware'
+        if csrf_middleware_class not in settings.MIDDLEWARE_CLASSES:
+            settings.MIDDLEWARE_CLASSES += (csrf_middleware_class,)
+
+    def tearDown(self):
+        settings.MIDDLEWARE_CLASSES = self.old_MIDDLEWARE_CLASSES
+
+    def test_csrf_enabled_client(self):
+        "A client can be instantiated with CSRF checks enabled"
+        csrf_client = Client(enforce_csrf_checks=True)
+
+        # The normal client allows the post
+        response = self.client.post('/test_client/post_view/', {})
+        self.assertEqual(response.status_code, 200)
+
+        # The CSRF-enabled client rejects it
+        response = csrf_client.post('/test_client/post_view/', {})
+        self.assertEqual(response.status_code, 403)
+
+
+class CustomTestClient(Client):
+    i_am_customized = "Yes"
+
+class CustomTestClientTest(TestCase):
+    client_class = CustomTestClient
+
+    def test_custom_test_client(self):
+        """A test case can specify a custom class for self.client."""
+        self.assertEqual(hasattr(self.client, "i_am_customized"), True)
+
+
+class RequestFactoryTest(TestCase):
+    def test_request_factory(self):
+        factory = RequestFactory()
+        request = factory.get('/somewhere/')
+        response = get_view(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'This is a test')

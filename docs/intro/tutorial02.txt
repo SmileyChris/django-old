@@ -1,10 +1,8 @@
-.. _intro-tutorial02:
-
 =====================================
 Writing your first Django app, part 2
 =====================================
 
-This tutorial begins where :ref:`Tutorial 1 <intro-tutorial01>` left off. We're
+This tutorial begins where :doc:`Tutorial 1 </intro/tutorial01>` left off. We're
 continuing the Web-poll application and will focus on Django's
 automatically-generated admin site.
 
@@ -105,7 +103,7 @@ Just one thing to do: We need to tell the admin that ``Poll``
 objects have an admin interface. To do this, create a file called
 ``admin.py`` in your ``polls`` directory, and edit it to look like this::
 
-    from mysite.polls.models import Poll
+    from polls.models import Poll
     from django.contrib import admin
 
     admin.site.register(Poll)
@@ -241,7 +239,7 @@ Yet.
 There are two ways to solve this problem. The first is to register ``Choice``
 with the admin just as we did with ``Poll``. That's easy::
 
-    from mysite.polls.models import Choice
+    from polls.models import Choice
 
     admin.site.register(Choice)
 
@@ -286,7 +284,7 @@ registration code to read::
 This tells Django: "Choice objects are edited on the Poll admin page. By
 default, provide enough fields for 3 choices."
 
-Load the "Add poll" page to see how that looks:
+Load the "Add poll" page to see how that looks, you may need to restart your development server:
 
 .. image:: _images/admin11t.png
    :alt: Add poll page now has choices on it
@@ -352,7 +350,7 @@ method (in ``models.py``) a ``short_description`` attribute::
         return self.pub_date.date() == datetime.date.today()
     was_published_today.short_description = 'Published today?'
 
-Let's add another improvement to the Poll change list page: Filters. Add the
+Edit your admin.py file again and add an improvement to the Poll change list page: Filters. Add the
 following line to ``PollAdmin``::
 
     list_filter = ['pub_date']
@@ -426,7 +424,7 @@ Then, just edit the file and replace the generic Django text with your own
 site's name as you see fit.
 
 This template file contains lots of text like ``{% block branding %}``
-and ``{{ title }}. The ``{%`` and ``{{`` tags are part of Django's
+and ``{{ title }}``. The ``{%`` and ``{{`` tags are part of Django's
 template language. When Django renders ``admin/base_site.html``, this
 template language will be evaluated to produce the final HTML page.
 Don't worry if you can't make any sense of the template right now --
@@ -463,5 +461,5 @@ object-specific admin pages in whatever way you think is best. Again,
 don't worry if you can't understand the template language -- we'll cover that
 in more detail in Tutorial 3.
 
-When you're comfortable with the admin site, read :ref:`part 3 of this tutorial
-<intro-tutorial03>` to start working on public poll views.
+When you're comfortable with the admin site, read :doc:`part 3 of this tutorial
+</intro/tutorial03>` to start working on public poll views.

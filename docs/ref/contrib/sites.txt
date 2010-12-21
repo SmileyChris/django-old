@@ -1,11 +1,9 @@
-.. _ref-contrib-sites:
-
 =====================
 The "sites" framework
 =====================
 
 .. module:: django.contrib.sites
-   :synopsis: Lets you operate multiple web sites from the same database and
+   :synopsis: Lets you operate multiple Web sites from the same database and
               Django project
 
 Django comes with an optional "sites" framework. It's a hook for associating
@@ -104,10 +102,12 @@ like this::
 
 This has the same benefits as described in the last section.
 
+.. _hooking-into-current-site-from-views:
+
 Hooking into the current site from views
 ----------------------------------------
 
-On a lower level, you can use the sites framework in your Django views to do
+You can use the sites framework in your Django views to do
 particular things based on the site in which the view is being called.
 For example::
 
@@ -147,6 +147,16 @@ the :class:`~django.contrib.sites.models.Site` model's manager has a
             # Do something
         else:
             # Do something else.
+
+.. versionchanged:: 1.3
+
+For code which relies on getting the current domain but cannot be certain
+that the sites framework will be installed for any given project, there is a
+utility function :func:`~django.contrib.sites.models.get_current_site` that
+takes a request object as an argument and returns either a Site instance (if
+the sites framework is installed) or a RequestSite instance (if it is not).
+This allows loose coupling with the sites framework and provides a usable
+fallback for cases where it is not installed.
 
 Getting the current domain for display
 --------------------------------------
@@ -260,7 +270,7 @@ The ``CurrentSiteManager``
 If :class:`~django.contrib.sites.models.Site` plays a key role in your
 application, consider using the helpful
 :class:`~django.contrib.sites.managers.CurrentSiteManager` in your
-model(s). It's a model :ref:`manager <topics-db-managers>` that
+model(s). It's a model :doc:`manager </topics/db/managers>` that
 automatically filters its queries to include only objects associated
 with the current :class:`~django.contrib.sites.models.Site`.
 
@@ -322,7 +332,7 @@ and pass a field name that doesn't exist, Django will raise a :exc:`ValueError`.
 Finally, note that you'll probably want to keep a normal
 (non-site-specific) ``Manager`` on your model, even if you use
 :class:`~django.contrib.sites.managers.CurrentSiteManager`. As
-explained in the :ref:`manager documentation <topics-db-managers>`, if
+explained in the :doc:`manager documentation </topics/db/managers>`, if
 you define a manager manually, then Django won't create the automatic
 ``objects = models.Manager()`` manager for you. Also note that certain
 parts of Django -- namely, the Django admin site and generic views --
@@ -387,7 +397,7 @@ Here's how Django uses the sites framework:
 
 .. versionadded:: 1.0
 
-Some :ref:`django.contrib <ref-contrib-index>` applications take advantage of
+Some :doc:`django.contrib </ref/contrib/index>` applications take advantage of
 the sites framework but are architected in a way that doesn't *require* the
 sites framework to be installed in your database. (Some people don't want to, or
 just aren't *able* to install the extra database table that the sites framework

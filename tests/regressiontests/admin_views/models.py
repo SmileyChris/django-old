@@ -10,6 +10,7 @@ from django.core.mail import EmailMessage
 from django.db import models
 from django import forms
 from django.forms.models import BaseModelFormSet
+from django.contrib.auth.models import User
 from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
 
@@ -89,6 +90,14 @@ class ArticleInline(admin.TabularInline):
 class ChapterInline(admin.TabularInline):
     model = Chapter
 
+class ChapterXtra1Admin(admin.ModelAdmin):
+    list_filter = ('chap',
+                   'chap__title',
+                   'chap__book',
+                   'chap__book__name',
+                   'chap__book__promo',
+                   'chap__book__promo__name',)
+
 class ArticleAdmin(admin.ModelAdmin):
     list_display = ('content', 'date', callable_year, 'model_year', 'modeladmin_year')
     list_filter = ('date',)
@@ -105,6 +114,25 @@ class ArticleAdmin(admin.ModelAdmin):
         return obj.date.year
     modeladmin_year.admin_order_field = 'date'
     modeladmin_year.short_description = None
+
+    def delete_model(self, request, obj):
+        EmailMessage(
+            'Greetings from a deleted object',
+            'I hereby inform you that some user deleted me',
+            'from@example.com',
+            ['to@example.com']
+        ).send()
+        return super(ArticleAdmin, self).delete_model(request, obj)
+
+    def save_model(self, request, obj, form, change=True):
+        EmailMessage(
+            'Greetings from a created object',
+            'I hereby inform you that some user created me',
+            'from@example.com',
+            ['to@example.com']
+        ).send()
+        return super(ArticleAdmin, self).save_model(request, obj, form, change)
+
 
 class CustomArticle(models.Model):
     content = models.TextField()
@@ -148,7 +176,7 @@ class Thing(models.Model):
         return self.title
 
 class ThingAdmin(admin.ModelAdmin):
-    list_filter = ('color',)
+    list_filter = ('color', 'color__warm', 'color__value')
 
 class Fabric(models.Model):
     NG_CHOICES = (
@@ -292,7 +320,7 @@ class Podcast(Media):
 class PodcastAdmin(admin.ModelAdmin):
     list_display = ('name', 'release_date')
     list_editable = ('release_date',)
-
+    date_hierarchy = 'release_date'
     ordering = ('name',)
 
 class Vodcast(Media):
@@ -579,6 +607,10 @@ class Pizza(models.Model):
 class PizzaAdmin(admin.ModelAdmin):
     readonly_fields = ('toppings',)
 
+class Album(models.Model):
+    owner = models.ForeignKey(User)
+    title = models.CharField(max_length=30)
+
 admin.site.register(Article, ArticleAdmin)
 admin.site.register(CustomArticle, CustomArticleAdmin)
 admin.site.register(Section, save_as=True, inlines=[ArticleInline])
@@ -622,6 +654,7 @@ admin.site.register(CyclicTwo)
 # contrib.admin.util's get_deleted_objects function.
 admin.site.register(Book, inlines=[ChapterInline])
 admin.site.register(Promo)
-admin.site.register(ChapterXtra1)
+admin.site.register(ChapterXtra1, ChapterXtra1Admin)
 admin.site.register(Pizza, PizzaAdmin)
 admin.site.register(Topping)
+admin.site.register(Album)

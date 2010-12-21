@@ -1,5 +1,3 @@
-.. _topics-files:
-
 ==============
 Managing files
 ==============
@@ -25,7 +23,8 @@ When you use a :class:`~django.db.models.FileField` or
 :class:`~django.db.models.ImageField`, Django provides a set of APIs you can use
 to deal with that file.
 
-Consider the following model, using an ``ImageField`` to store a photo::
+Consider the following model, using an :class:`~django.db.models.ImageField` to
+store a photo::
 
     class Car(models.Model):
         name = models.CharField(max_length=255)
@@ -51,9 +50,9 @@ it has all the methods and attributes described below.
 The ``File`` object
 ===================
 
-Internally, Django uses a ``django.core.files.File`` any time it needs to
-represent a file. This object is a thin wrapper around Python's `built-in file
-object`_ with some Django-specific additions.
+Internally, Django uses a :class:`django.core.files.File` instance any time it
+needs to represent a file. This object is a thin wrapper around Python's
+`built-in file object`_ with some Django-specific additions.
 
 .. _built-in file object: http://docs.python.org/library/stdtypes.html#bltin-file-objects
 
@@ -69,8 +68,8 @@ using a Python built-in ``file`` object::
     >>> f = open('/tmp/hello.world', 'w')
     >>> myfile = File(f)
 
-Now you can use any of the ``File`` attributes and methods documented in
-:ref:`ref-files-file`.
+Now you can use any of the documented attributes and methods
+of the :class:`~django.core.files.File` class.
 
 File storage
 ============
@@ -84,7 +83,7 @@ setting; if you don't explicitly provide a storage system, this is the one that
 will be used.
 
 See below for details of the built-in default file storage system, and see
-:ref:`howto-custom-file-storage` for information on writing your own file
+:doc:`/howto/custom-file-storage` for information on writing your own file
 storage system.
 
 Storage objects
@@ -111,7 +110,7 @@ useful -- you can use the global default storage system::
     >>> default_storage.exists(path)
     False
 
-See :ref:`ref-files-storage` for the file storage API.
+See :doc:`/ref/files/storage` for the file storage API.
 
 The built-in filesystem storage class
 -------------------------------------
@@ -125,14 +124,14 @@ Argument                Description
 ======================  ===================================================
 ``location``            Optional. Absolute path to the directory that will
                         hold the files. If omitted, it will be set to the
-                        value of your ``MEDIA_ROOT`` setting.
+                        value of your :setting:`MEDIA_ROOT` setting.
 ``base_url``            Optional. URL that serves the files stored at this
                         location. If omitted, it will default to the value
-                        of your ``MEDIA_URL`` setting.
+                        of your :setting:`MEDIA_URL` setting.
 ======================  ===================================================
 
 For example, the following code will store uploaded files under
-``/media/photos`` regardless of what your ``MEDIA_ROOT`` setting is::
+``/media/photos`` regardless of what your :setting:`MEDIA_ROOT` setting is::
 
     from django.db import models
     from django.core.files.storage import FileSystemStorage
@@ -143,5 +142,6 @@ For example, the following code will store uploaded files under
         ...
         photo = models.ImageField(storage=fs)
 
-:ref:`Custom storage systems <howto-custom-file-storage>` work the same way: you
-can pass them in as the ``storage`` argument to a ``FileField``.
+:doc:`Custom storage systems </howto/custom-file-storage>` work the same way:
+you can pass them in as the ``storage`` argument to a
+:class:`~django.db.models.FileField`.

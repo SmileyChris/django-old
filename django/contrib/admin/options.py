@@ -5,11 +5,11 @@ from django.forms.models import BaseInlineFormSet
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.admin import widgets
 from django.contrib.admin import helpers
-from django.contrib.admin.util import unquote, flatten_fieldsets, get_deleted_objects, model_ngettext, model_format_dict
+from django.contrib.admin.util import unquote, flatten_fieldsets, get_deleted_objects, model_format_dict
 from django.contrib import messages
 from django.views.decorators.csrf import csrf_protect
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import models, transaction
+from django.db import models, transaction, router
 from django.db.models.fields import BLANK_CHOICE_DASH
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render_to_response
@@ -21,7 +21,7 @@ from django.utils.safestring import mark_safe
 from django.utils.functional import curry
 from django.utils.text import capfirst, get_text_list
 from django.utils.translation import ugettext as _
-from django.utils.translation import ungettext, ugettext_lazy
+from django.utils.translation import ungettext
 from django.utils.encoding import force_unicode
 
 HORIZONTAL, VERTICAL = 1, 2
@@ -67,6 +67,7 @@ class BaseModelAdmin(object):
     prepopulated_fields = {}
     formfield_overrides = {}
     readonly_fields = ()
+    ordering = None
 
     def __init__(self):
         overrides = FORMFIELD_FOR_DBFIELD_DEFAULTS.copy()
@@ -107,7 +108,13 @@ class BaseModelAdmin(object):
             # rendered output. formfield can be None if it came from a
             # OneToOneField with parent_link=True or a M2M intermediary.
             if formfield and db_field.name not in self.raw_id_fields:
-                formfield.widget = widgets.RelatedFieldWidgetWrapper(formfield.widget, db_field.rel, self.admin_site)
+                related_modeladmin = self.admin_site._registry.get(
+                                                            db_field.rel.to)
+                can_add_related = bool(related_modeladmin and
+                            related_modeladmin.has_add_permission(request))
+                formfield.widget = widgets.RelatedFieldWidgetWrapper(
+                            formfield.widget, db_field.rel, self.admin_site,
+                            can_add_related=can_add_related)
 
             return formfield
 
@@ -183,6 +190,18 @@ class BaseModelAdmin(object):
     def get_readonly_fields(self, request, obj=None):
         return self.readonly_fields
 
+    def queryset(self, request):
+        """
+        Returns a QuerySet of all model instances that can be edited by the
+        admin site. This is used by changelist_view.
+        """
+        qs = self.model._default_manager.get_query_set()
+        # TODO: this should be handled by some parameter to the ChangeList.
+        ordering = self.ordering or () # otherwise we might try to *None, which is bad ;)
+        if ordering:
+            qs = qs.order_by(*ordering)
+        return qs
+
 class ModelAdmin(BaseModelAdmin):
     "Encapsulates all admin options and functionality for a given model."
 
@@ -196,7 +215,6 @@ class ModelAdmin(BaseModelAdmin):
     date_hierarchy = None
     save_as = False
     save_on_top = False
-    ordering = None
     inlines = []
 
     # Custom templates (designed to be over-ridden in subclasses)
@@ -319,18 +337,6 @@ class ModelAdmin(BaseModelAdmin):
             'delete': self.has_delete_permission(request),
         }
 
-    def queryset(self, request):
-        """
-        Returns a QuerySet of all model instances that can be edited by the
-        admin site. This is used by changelist_view.
-        """
-        qs = self.model._default_manager.get_query_set()
-        # TODO: this should be handled by some parameter to the ChangeList.
-        ordering = self.ordering or () # otherwise we might try to *None, which is bad ;)
-        if ordering:
-            qs = qs.order_by(*ordering)
-        return qs
-
     def get_fieldsets(self, request, obj=None):
         "Hook for specifying fieldsets for the add form."
         if self.declared_fieldsets:
@@ -447,9 +453,8 @@ class ModelAdmin(BaseModelAdmin):
 
     def log_deletion(self, request, object, object_repr):
         """
-        Log that an object has been successfully deleted. Note that since the
-        object is deleted, it might no longer be safe to call *any* methods
-        on the object, hence this method getting object_repr.
+        Log that an object will be deleted. Note that this method is called
+        before the deletion.
 
         The default implementation creates an admin LogEntry object.
         """
@@ -501,7 +506,7 @@ class ModelAdmin(BaseModelAdmin):
 
         # Convert the actions into a SortedDict keyed by name
         # and sorted by description.
-        actions.sort(lambda a,b: cmp(a[2].lower(), b[2].lower()))
+        actions.sort(key=lambda k: k[2].lower())
         actions = SortedDict([
             (name, (func, name, desc))
             for func, name, desc in actions
@@ -596,6 +601,12 @@ class ModelAdmin(BaseModelAdmin):
         """
         obj.save()
 
+    def delete_model(self, requet, obj):
+        """
+        Given a model instance delete it from the database.
+        """
+        obj.delete()
+
     def save_formset(self, request, form, formset, change):
         """
         Given an inline formset save it to the database.
@@ -643,17 +654,17 @@ class ModelAdmin(BaseModelAdmin):
         msg = _('The %(name)s "%(obj)s" was added successfully.') % {'name': force_unicode(opts.verbose_name), 'obj': force_unicode(obj)}
         # Here, we distinguish between different save types by checking for
         # the presence of keys in request.POST.
-        if request.POST.has_key("_continue"):
+        if "_continue" in request.POST:
             self.message_user(request, msg + ' ' + _("You may edit it again below."))
-            if request.POST.has_key("_popup"):
+            if "_popup" in request.POST:
                 post_url_continue += "?_popup=1"
             return HttpResponseRedirect(post_url_continue % pk_value)
 
-        if request.POST.has_key("_popup"):
+        if "_popup" in request.POST:
             return HttpResponse('<script type="text/javascript">opener.dismissAddAnotherPopup(window, "%s", "%s");</script>' % \
                 # escape() calls force_unicode.
                 (escape(pk_value), escape(obj)))
-        elif request.POST.has_key("_addanother"):
+        elif "_addanother" in request.POST:
             self.message_user(request, msg + ' ' + (_("You may add another %s below.") % force_unicode(opts.verbose_name)))
             return HttpResponseRedirect(request.path)
         else:
@@ -676,17 +687,17 @@ class ModelAdmin(BaseModelAdmin):
         pk_value = obj._get_pk_val()
 
         msg = _('The %(name)s "%(obj)s" was changed successfully.') % {'name': force_unicode(opts.verbose_name), 'obj': force_unicode(obj)}
-        if request.POST.has_key("_continue"):
+        if "_continue" in request.POST:
             self.message_user(request, msg + ' ' + _("You may edit it again below."))
-            if request.REQUEST.has_key('_popup'):
+            if "_popup" in request.REQUEST:
                 return HttpResponseRedirect(request.path + "?_popup=1")
             else:
                 return HttpResponseRedirect(request.path)
-        elif request.POST.has_key("_saveasnew"):
+        elif "_saveasnew" in request.POST:
             msg = _('The %(name)s "%(obj)s" was added successfully. You may edit it again below.') % {'name': force_unicode(opts.verbose_name), 'obj': obj}
             self.message_user(request, msg)
             return HttpResponseRedirect("../%s/" % pk_value)
-        elif request.POST.has_key("_addanother"):
+        elif "_addanother" in request.POST:
             self.message_user(request, msg + ' ' + (_("You may add another %s below.") % force_unicode(opts.verbose_name)))
             return HttpResponseRedirect("../add/")
         else:
@@ -754,7 +765,7 @@ class ModelAdmin(BaseModelAdmin):
             if isinstance(response, HttpResponse):
                 return response
             else:
-                return HttpResponseRedirect(".")
+                return HttpResponseRedirect(request.get_full_path())
         else:
             msg = _("No action selected.")
             self.message_user(request, msg)
@@ -788,7 +799,7 @@ class ModelAdmin(BaseModelAdmin):
                     prefix = "%s-%s" % (prefix, prefixes[prefix])
                 formset = FormSet(data=request.POST, files=request.FILES,
                                   instance=new_object,
-                                  save_as_new=request.POST.has_key("_saveasnew"),
+                                  save_as_new="_saveasnew" in request.POST,
                                   prefix=prefix, queryset=inline.queryset(request))
                 formsets.append(formset)
             if all_valid(formsets) and form_validated:
@@ -839,7 +850,7 @@ class ModelAdmin(BaseModelAdmin):
         context = {
             'title': _('Add %s') % force_unicode(opts.verbose_name),
             'adminform': adminForm,
-            'is_popup': request.REQUEST.has_key('_popup'),
+            'is_popup': "_popup" in request.REQUEST,
             'show_delete': False,
             'media': mark_safe(media),
             'inline_admin_formsets': inline_admin_formsets,
@@ -865,7 +876,7 @@ class ModelAdmin(BaseModelAdmin):
         if obj is None:
             raise Http404(_('%(name)s object with primary key %(key)r does not exist.') % {'name': force_unicode(opts.verbose_name), 'key': escape(object_id)})
 
-        if request.method == 'POST' and request.POST.has_key("_saveasnew"):
+        if request.method == 'POST' and "_saveasnew" in request.POST:
             return self.add_view(request, form_url='../add/')
 
         ModelForm = self.get_form(request, obj)
@@ -932,7 +943,7 @@ class ModelAdmin(BaseModelAdmin):
             'adminform': adminForm,
             'object_id': object_id,
             'original': obj,
-            'is_popup': request.REQUEST.has_key('_popup'),
+            'is_popup': "_popup" in request.REQUEST,
             'media': mark_safe(media),
             'inline_admin_formsets': inline_admin_formsets,
             'errors': helpers.AdminErrorList(form, formsets),
@@ -1091,6 +1102,7 @@ class ModelAdmin(BaseModelAdmin):
         ], context, context_instance=context_instance)
 
     @csrf_protect_m
+    @transaction.commit_on_success
     def delete_view(self, request, object_id, extra_context=None):
         "The 'delete' admin view for this model."
         opts = self.model._meta
@@ -1104,16 +1116,19 @@ class ModelAdmin(BaseModelAdmin):
         if obj is None:
             raise Http404(_('%(name)s object with primary key %(key)r does not exist.') % {'name': force_unicode(opts.verbose_name), 'key': escape(object_id)})
 
+        using = router.db_for_write(self.model)
+
         # Populate deleted_objects, a data structure of all related objects that
         # will also be deleted.
-        (deleted_objects, perms_needed) = get_deleted_objects((obj,), opts, request.user, self.admin_site)
+        (deleted_objects, perms_needed) = get_deleted_objects(
+            [obj], opts, request.user, self.admin_site, using)
 
         if request.POST: # The user has already confirmed the deletion.
             if perms_needed:
                 raise PermissionDenied
             obj_display = force_unicode(obj)
             self.log_deletion(request, obj, obj_display)
-            obj.delete()
+            self.delete_model(request, obj)
 
             self.message_user(request, _('The %(name)s "%(obj)s" was deleted successfully.') % {'name': force_unicode(opts.verbose_name), 'obj': force_unicode(obj_display)})
 
@@ -1166,34 +1181,6 @@ class ModelAdmin(BaseModelAdmin):
             "admin/%s/object_history.html" % app_label,
             "admin/object_history.html"
         ], context, context_instance=context_instance)
-
-    #
-    # DEPRECATED methods.
-    #
-    def __call__(self, request, url):
-        """
-        DEPRECATED: this is the old way of URL resolution, replaced by
-        ``get_urls()``. This only called by AdminSite.root(), which is also
-        deprecated.
-
-        Again, remember that the following code only exists for
-        backwards-compatibility. Any new URLs, changes to existing URLs, or
-        whatever need to be done up in get_urls(), above!
-
-        This function still exists for backwards-compatibility; it will be
-        removed in Django 1.3.
-        """
-        # Delegate to the appropriate method, based on the URL.
-        if url is None:
-            return self.changelist_view(request)
-        elif url == "add":
-            return self.add_view(request)
-        elif url.endswith('/history'):
-            return self.history_view(request, unquote(url[:-8]))
-        elif url.endswith('/delete'):
-            return self.delete_view(request, unquote(url[:-7]))
-        else:
-            return self.change_view(request, unquote(url))
 
 class InlineModelAdmin(BaseModelAdmin):
     """
@@ -1269,9 +1256,6 @@ class InlineModelAdmin(BaseModelAdmin):
         form = self.get_formset(request).form
         fields = form.base_fields.keys() + list(self.get_readonly_fields(request, obj))
         return [(None, {'fields': fields})]
-
-    def queryset(self, request):
-        return self.model._default_manager.all()
 
 class StackedInline(InlineModelAdmin):
     template = 'admin/edit_inline/stacked.html'

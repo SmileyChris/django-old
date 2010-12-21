@@ -10,26 +10,15 @@ from django.core.cache.backends.base import BaseCache
 from django.utils.synch import RWLock
 
 class CacheClass(BaseCache):
-    def __init__(self, _, params):
-        BaseCache.__init__(self, params)
+    def __init__(self, _, params, key_prefix='', version=1, key_func=None):
+        BaseCache.__init__(self, params, key_prefix, version, key_func)
         self._cache = {}
         self._expire_info = {}
-
-        max_entries = params.get('max_entries', 300)
-        try:
-            self._max_entries = int(max_entries)
-        except (ValueError, TypeError):
-            self._max_entries = 300
-
-        cull_frequency = params.get('cull_frequency', 3)
-        try:
-            self._cull_frequency = int(cull_frequency)
-        except (ValueError, TypeError):
-            self._cull_frequency = 3
-
         self._lock = RWLock()
 
-    def add(self, key, value, timeout=None):
+    def add(self, key, value, timeout=None, version=None):
+        key = self.make_key(key, version=version)
+        self.validate_key(key)
         self._lock.writer_enters()
         try:
             exp = self._expire_info.get(key)
@@ -43,7 +32,9 @@ class CacheClass(BaseCache):
         finally:
             self._lock.writer_leaves()
 
-    def get(self, key, default=None):
+    def get(self, key, default=None, version=None):
+        key = self.make_key(key, version=version)
+        self.validate_key(key)
         self._lock.reader_enters()
         try:
             exp = self._expire_info.get(key)
@@ -75,7 +66,9 @@ class CacheClass(BaseCache):
         self._cache[key] = value
         self._expire_info[key] = time.time() + timeout
 
-    def set(self, key, value, timeout=None):
+    def set(self, key, value, timeout=None, version=None):
+        key = self.make_key(key, version=version)
+        self.validate_key(key)
         self._lock.writer_enters()
         # Python 2.4 doesn't allow combined try-except-finally blocks.
         try:
@@ -86,7 +79,9 @@ class CacheClass(BaseCache):
         finally:
             self._lock.writer_leaves()
 
-    def has_key(self, key):
+    def has_key(self, key, version=None):
+        key = self.make_key(key, version=version)
+        self.validate_key(key)
         self._lock.reader_enters()
         try:
             exp = self._expire_info.get(key)
@@ -126,7 +121,9 @@ class CacheClass(BaseCache):
         except KeyError:
             pass
 
-    def delete(self, key):
+    def delete(self, key, version=None):
+        key = self.make_key(key, version=version)
+        self.validate_key(key)
         self._lock.writer_enters()
         try:
             self._delete(key)

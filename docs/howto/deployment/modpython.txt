@@ -1,14 +1,20 @@
-.. _howto-deployment-modpython:
-
 ============================================
 How to use Django with Apache and mod_python
 ============================================
+
+.. warning::
+
+    Support for mod_python has been deprecated, and will be removed in
+    Django 1.5. If you are configuring a new deployment, you are
+    strongly encouraged to consider using :doc:`mod_wsgi
+    </howto/deployment/modwsgi>` or any of the other :doc:`supported
+    backends </howto/deployment/index>`.
 
 .. highlight:: apache
 
 The `mod_python`_ module for Apache_ can be used to deploy Django to a
 production server, although it has been mostly superseded by the simpler
-:ref:`mod_wsgi deployment option <howto-deployment-modwsgi>`.
+:doc:`mod_wsgi deployment option </howto/deployment/modwsgi>`.
 
 mod_python is similar to (and inspired by) `mod_perl`_ : It embeds Python within
 Apache and loads Python code into memory when the server starts. Code stays in
@@ -25,8 +31,8 @@ Django requires Apache 2.x and mod_python 3.x, and you should use Apache's
       Apache, there's no better source than `Apache's own official
       documentation`_
 
-    * You may also be interested in :ref:`How to use Django with FastCGI, SCGI,
-      or AJP <howto-deployment-fastcgi>`.
+    * You may also be interested in :doc:`How to use Django with FastCGI, SCGI,
+      or AJP </howto/deployment/fastcgi>`.
 
 .. _Apache: http://httpd.apache.org/
 .. _mod_python: http://www.modpython.org/
@@ -153,6 +159,8 @@ the full URL.
 When deploying Django sites on mod_python, you'll need to restart Apache each
 time you make changes to your Python code.
 
+.. _mod_python documentation: http://modpython.org/live/current/doc-html/directives.html
+
 Multiple Django installations on the same Apache
 ================================================
 
@@ -206,17 +214,25 @@ everything for each request. But don't do that on a production server, or we'll
 revoke your Django privileges.
 
 If you're the type of programmer who debugs using scattered ``print``
-statements, note that ``print`` statements have no effect in mod_python; they
-don't appear in the Apache log, as one might expect. If you have the need to
-print debugging information in a mod_python setup, either do this::
+statements, note that output to ``stdout`` will not appear in the Apache
+log and can even `cause response errors`_.
 
-    assert False, the_value_i_want_to_see
+.. _cause response errors: http://blog.dscpl.com.au/2009/04/wsgi-and-printing-to-standard-output.html
 
-Or add the debugging information to the template of your page.
+If you have the need to print debugging information in a mod_python setup, you
+have a few options. You can print to ``stderr`` explicitly, like so::
 
-.. _mod_python documentation: http://modpython.org/live/current/doc-html/directives.html
+    print >> sys.stderr, 'debug text'
+    sys.stderr.flush()
 
-.. _serving-media-files:
+(note that ``stderr`` is buffered, so calling ``flush`` is necessary if you wish
+debugging information to be displayed promptly.)
+
+A more compact approach is to use an assertion::
+
+    assert False, 'debug text'
+
+Another alternative is to add debugging information to the template of your page.
 
 Serving media files
 ===================
@@ -269,10 +285,6 @@ the ``media`` subdirectory and any URL that ends with ``.jpg``, ``.gif`` or
 .. _Apache: http://httpd.apache.org/
 .. _Cherokee: http://www.cherokee-project.com/
 
-.. _howto-deployment-modpython-serving-the-admin-files:
-
-.. _serving-the-admin-files:
-
 Serving the admin files
 =======================
 
@@ -306,7 +318,7 @@ project (or somewhere else) that contains something like the following:
     import os
     os.environ['PYTHON_EGG_CACHE'] = '/some/directory'
 
-Here, ``/some/directory`` is a directory that the Apache webserver process can
+Here, ``/some/directory`` is a directory that the Apache Web server process can
 write to. It will be used as the location for any unpacking of code the eggs
 need to do.
 
@@ -383,7 +395,7 @@ If you get a UnicodeEncodeError
 ===============================
 
 If you're taking advantage of the internationalization features of Django (see
-:ref:`topics-i18n`) and you intend to allow users to upload files, you must
+:doc:`/topics/i18n/index`) and you intend to allow users to upload files, you must
 ensure that the environment used to start Apache is configured to accept
 non-ASCII file names. If your environment is not correctly configured, you
 will trigger ``UnicodeEncodeError`` exceptions when calling functions like

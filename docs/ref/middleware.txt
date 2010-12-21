@@ -1,5 +1,3 @@
-.. _ref-middleware:
-
 ==========
 Middleware
 ==========
@@ -9,7 +7,7 @@ Middleware
 
 This document explains all middleware components that come with Django. For
 information on how how to use them and how to write your own middleware, see
-the :ref:`middleware usage guide <topics-http-middleware>`.
+the :doc:`middleware usage guide </topics/http/middleware>`.
 
 Available middleware
 ====================
@@ -20,13 +18,13 @@ Cache middleware
 .. module:: django.middleware.cache
    :synopsis: Middleware for the site-wide cache.
 
-.. class:: django.middleware.cache.UpdateCacheMiddleware
+.. class:: UpdateCacheMiddleware
 
-.. class:: django.middleware.cache.FetchFromCacheMiddleware
+.. class:: FetchFromCacheMiddleware
 
 Enable the site-wide cache. If these are enabled, each Django-powered page will
 be cached for as long as the :setting:`CACHE_MIDDLEWARE_SECONDS` setting
-defines. See the :ref:`cache documentation <topics-cache>`.
+defines. See the :doc:`cache documentation </topics/cache>`.
 
 "Common" middleware
 -------------------
@@ -34,7 +32,7 @@ defines. See the :ref:`cache documentation <topics-cache>`.
 .. module:: django.middleware.common
    :synopsis: Middleware adding "common" conveniences for perfectionists.
 
-.. class:: django.middleware.common.CommonMiddleware
+.. class:: CommonMiddleware
 
 Adds a few conveniences for perfectionists:
 
@@ -68,6 +66,9 @@ Adds a few conveniences for perfectionists:
       indexer would treat them as separate URLs -- so it's best practice to
       normalize URLs.
 
+    * Sends broken link notification emails to :setting:`MANAGERS` if
+      :setting:`SEND_BROKEN_LINK_EMAILS` is set to ``True``.
+
     * Handles ETags based on the :setting:`USE_ETAGS` setting. If
       :setting:`USE_ETAGS` is set to ``True``, Django will calculate an ETag
       for each request by MD5-hashing the page content, and it'll take care of
@@ -79,11 +80,11 @@ View metadata middleware
 .. module:: django.middleware.doc
    :synopsis: Middleware to help your app self-document.
 
-.. class:: django.middleware.doc.XViewMiddleware
+.. class:: XViewMiddleware
 
 Sends custom ``X-View`` HTTP headers to HEAD requests that come from IP
 addresses defined in the :setting:`INTERNAL_IPS` setting. This is used by
-Django's automatic documentation system.
+Django's :doc:`automatic documentation system </ref/contrib/admin/admindocs>`.
 
 GZIP middleware
 ---------------
@@ -91,7 +92,7 @@ GZIP middleware
 .. module:: django.middleware.gzip
    :synopsis: Middleware to serve gziped content for performance.
 
-.. class:: django.middleware.gzip.GZipMiddleware
+.. class:: GZipMiddleware
 
 Compresses content for browsers that understand gzip compression (all modern
 browsers).
@@ -108,7 +109,7 @@ Conditional GET middleware
 .. module:: django.middleware.http
    :synopsis: Middleware handling advanced HTTP features.
 
-.. class:: django.middleware.http.ConditionalGetMiddleware
+.. class:: ConditionalGetMiddleware
 
 Handles conditional GET operations. If the response has a ``ETag`` or
 ``Last-Modified`` header, and the request has ``If-None-Match`` or
@@ -120,7 +121,7 @@ Also sets the ``Date`` and ``Content-Length`` response-headers.
 Reverse proxy middleware
 ------------------------
 
-.. class:: django.middleware.http.SetRemoteAddrFromForwardedFor
+.. class:: SetRemoteAddrFromForwardedFor
 
 .. versionchanged:: 1.1
 
@@ -133,11 +134,11 @@ Locale middleware
 .. module:: django.middleware.locale
    :synopsis: Middleware to enable language selection based on the request.
 
-.. class:: django.middleware.locale.LocaleMiddleware
+.. class:: LocaleMiddleware
 
 Enables language selection based on data from the request. It customizes
-content for each user. See the :ref:`internationalization documentation
-<topics-i18n>`.
+content for each user. See the :doc:`internationalization documentation
+</topics/i18n/index>`.
 
 Message middleware
 ------------------
@@ -145,13 +146,13 @@ Message middleware
 .. module:: django.contrib.messages.middleware
    :synopsis: Message middleware.
 
-.. class:: django.contrib.messages.middleware.MessageMiddleware
+.. class:: MessageMiddleware
 
 .. versionadded:: 1.2
    ``MessageMiddleware`` was added.
 
 Enables cookie- and session-based message support. See the
-:ref:`messages documentation <ref-contrib-messages>`.
+:doc:`messages documentation </ref/contrib/messages>`.
 
 Session middleware
 ------------------
@@ -159,10 +160,10 @@ Session middleware
 .. module:: django.contrib.sessions.middleware
    :synopsis: Session middleware.
 
-.. class:: django.contrib.sessions.middleware.SessionMiddleware
+.. class:: SessionMiddleware
 
-Enables session support. See the :ref:`session documentation
-<topics-http-sessions>`.
+Enables session support. See the :doc:`session documentation
+</topics/http/sessions>`.
 
 Authentication middleware
 -------------------------
@@ -170,11 +171,11 @@ Authentication middleware
 .. module:: django.contrib.auth.middleware
   :synopsis: Authentication middleware.
 
-.. class:: django.contrib.auth.middleware.AuthenticationMiddleware
+.. class:: AuthenticationMiddleware
 
 Adds the ``user`` attribute, representing the currently-logged-in user, to
-every incoming ``HttpRequest`` object. See :ref:`Authentication in Web requests
-<topics-auth>`.
+every incoming ``HttpRequest`` object. See :doc:`Authentication in Web requests
+</topics/auth>`.
 
 CSRF protection middleware
 --------------------------
@@ -183,21 +184,21 @@ CSRF protection middleware
    :synopsis: Middleware adding protection against Cross Site Request
               Forgeries.
 
-.. class:: django.middleware.csrf.CsrfMiddleware
+.. class:: CsrfMiddleware
 
 .. versionadded:: 1.0
 
 Adds protection against Cross Site Request Forgeries by adding hidden form
 fields to POST forms and checking requests for the correct value. See the
-:ref:`Cross Site Request Forgery protection documentation <ref-contrib-csrf>`.
+:doc:`Cross Site Request Forgery protection documentation </ref/contrib/csrf>`.
 
 Transaction middleware
 ----------------------
 
 .. module:: django.middleware.transaction
-   :synopsis: Middleware binding a database transaction to each web request.
+   :synopsis: Middleware binding a database transaction to each Web request.
 
-.. class:: django.middleware.transaction.TransactionMiddleware
+.. class:: TransactionMiddleware
 
 Binds commit and rollback to the request/response phase. If a view function
 runs successfully, a commit is done. If it fails with an exception, a rollback
@@ -208,4 +209,4 @@ running outside of it run with commit-on-save - the default Django behavior.
 Middleware modules running inside it (coming later in the stack) will be under
 the same transaction control as the view functions.
 
-See the :ref:`transaction management documentation <topics-db-transactions>`.
+See the :doc:`transaction management documentation </topics/db/transactions>`.

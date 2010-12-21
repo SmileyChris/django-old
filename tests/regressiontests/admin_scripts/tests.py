@@ -4,13 +4,14 @@ advertised - especially with regards to the handling of the DJANGO_SETTINGS_MODU
 and default settings.py files.
 """
 import os
-import unittest
 import shutil
 import sys
 import re
 
 from django import conf, bin, get_version
 from django.conf import settings
+from django.utils import unittest
+
 
 class AdminScriptTestCase(unittest.TestCase):
     def write_settings(self, filename, apps=None, is_dir=False, sdict=None):
@@ -118,6 +119,7 @@ class AdminScriptTestCase(unittest.TestCase):
             from subprocess import Popen, PIPE
             p = Popen(cmd, shell=True, stdin=PIPE, stdout=PIPE, stderr=PIPE)
             stdin, stdout, stderr = (p.stdin, p.stdout, p.stderr)
+            p.wait()
         except ImportError:
             stdin, stdout, stderr = os.popen3(cmd)
         out, err = stdout.read(), stderr.read()
@@ -133,7 +135,7 @@ class AdminScriptTestCase(unittest.TestCase):
         return out, err
 
     def run_django_admin(self, args, settings_file=None):
-        bin_dir = os.path.dirname(bin.__file__)
+        bin_dir = os.path.abspath(os.path.dirname(bin.__file__))
         return self.run_test(os.path.join(bin_dir,'django-admin.py'), args, settings_file)
 
     def run_manage(self, args, settings_file=None):
@@ -156,7 +158,7 @@ class AdminScriptTestCase(unittest.TestCase):
         self.assertEquals(len(stream), 0, "Stream should be empty: actually contains '%s'" % stream)
     def assertOutput(self, stream, msg):
         "Utility assertion: assert that the given message exists in the output"
-        self.failUnless(msg in stream, "'%s' does not match actual output text '%s'" % (msg, stream))
+        self.assertTrue(msg in stream, "'%s' does not match actual output text '%s'" % (msg, stream))
 
 ##########################################################################
 # DJANGO ADMIN TESTS

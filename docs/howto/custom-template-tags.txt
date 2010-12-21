@@ -1,5 +1,3 @@
-.. _howto-custom-template-tags:
-
 ================================
 Custom template tags and filters
 ================================
@@ -7,8 +5,8 @@ Custom template tags and filters
 Introduction
 ============
 
-Django's template system comes with a wide variety of :ref:`built-in
-tags and filters <ref-templates-builtins>` designed to address the
+Django's template system comes with a wide variety of :doc:`built-in
+tags and filters </ref/templates/builtins>` designed to address the
 presentation logic needs of your application. Nevertheless, you may
 find yourself needing functionality that is not covered by the core
 set of template primitives. You can extend the template engine by
@@ -671,9 +669,27 @@ A couple of things to note about the ``simple_tag`` helper function:
     * If the argument was a template variable, our function is passed the
       current value of the variable, not the variable itself.
 
-When your template tag does not need access to the current context, writing a
-function to work with the input values and using the ``simple_tag`` helper is
-the easiest way to create a new tag.
+.. versionadded:: 1.3
+
+If your template tag needs to access the current context, you can use the
+``takes_context`` argument when registering your tag::
+
+    # The first argument *must* be called "context" here.
+    def current_time(context, format_string):
+        timezone = context['timezone']
+        return your_get_current_time_method(timezone)
+
+    register.simple_tag(takes_context=True)(current_time)
+
+Or, using decorator syntax::
+
+    @register.simple_tag(takes_context=True)
+    def current_time(context, format_string):
+        timezone = context['timezone']
+        return your_get_current_time_method(timezone)
+
+For more information on how the ``takes_context`` option works, see the section
+on `inclusion tags`_.
 
 .. _howto-custom-template-tags-inclusion-tags:
 
@@ -792,7 +808,7 @@ difference between this case and the previous ``inclusion_tag`` example.
 Setting a variable in the context
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The above example simply output a value. Generally, it's more flexible if your
+The above examples simply output a value. Generally, it's more flexible if your
 template tags set template variables instead of outputting values. That way,
 template authors can reuse the values that your template tags create.
 
@@ -817,6 +833,13 @@ Here's how you'd use this new version of the tag:
 .. code-block:: html+django
 
     {% current_time "%Y-%M-%d %I:%M %p" %}<p>The time is {{ current_time }}.</p>
+
+.. admonition:: Variable scope in context
+
+    Any variable set in the context will only be available in the same ``block``
+    of the template in which it was assigned. This behaviour is intentional;
+    it provides a scope for variables so that they don't conflict with
+    context in other blocks.
 
 But, there's a problem with ``CurrentTimeNode2``: The variable name
 ``current_time`` is hard-coded. This means you'll need to make sure your

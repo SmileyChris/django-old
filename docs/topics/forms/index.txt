@@ -1,5 +1,3 @@
-.. _topics-forms-index:
-
 ==================
 Working with forms
 ==================
@@ -7,8 +5,9 @@ Working with forms
 .. admonition:: About this document
 
     This document provides an introduction to Django's form handling features.
-    For a more detailed look at the forms API, see :ref:`ref-forms-api`. For
-    documentation of the available field types, see :ref:`ref-forms-fields`.
+    For a more detailed look at specific areas of the forms API, see
+    :doc:`/ref/forms/api`, :doc:`/ref/forms/fields`, and
+    :doc:`/ref/forms/validation`.
 
 .. highlightlang:: html+django
 
@@ -77,10 +76,10 @@ personal Web site:
 A form is composed of ``Field`` objects. In this case, our form has four
 fields: ``subject``, ``message``, ``sender`` and ``cc_myself``. ``CharField``,
 ``EmailField`` and ``BooleanField`` are just three of the available field types;
-a full list can be found in :ref:`ref-forms-fields`.
+a full list can be found in :doc:`/ref/forms/fields`.
 
 If your form is going to be used to directly add or edit a Django model, you can
-use a :ref:`ModelForm <topics-forms-modelforms>` to avoid duplicating your model
+use a :doc:`ModelForm </topics/forms/modelforms>` to avoid duplicating your model
 description.
 
 Using a form in a view
@@ -163,7 +162,7 @@ Extending the above example, here's how the form data could be processed:
         send_mail(subject, message, sender, recipients)
         return HttpResponseRedirect('/thanks/') # Redirect after POST
 
-For more on sending e-mail from Django, see :ref:`topics-email`.
+For more on sending e-mail from Django, see :doc:`/topics/email`.
 
 Displaying a form using a template
 ----------------------------------
@@ -212,6 +211,7 @@ the way a form is presented using the Django template language. Extending the
 above example::
 
     <form action="/contact/" method="post">
+        {{ form.non_field_errors }}
         <div class="fieldWrapper">
             {{ form.subject.errors }}
             <label for="id_subject">E-mail subject:</label>
@@ -371,12 +371,11 @@ using the :ttag:`include` tag to reuse it in other templates::
     {% endfor %}
 
 If the form object passed to a template has a different name within the
-context, you can alias it using the :ttag:`with` tag::
+context, you can alias it using the ``with`` argument of the :ttag:`include`
+tag::
 
     <form action="/comments/add/" method="post">
-        {% with comment_form as form %}
-            {% include "form_snippet.html" %}
-        {% endwith %}
+        {% include "form_snippet.html" with form=comment_form %}
         <p><input type="submit" value="Submit comment" /></p>
     </form>
 
@@ -389,7 +388,7 @@ Further topics
 This covers the basics, but forms can do a whole lot more:
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    modelforms
    formsets
@@ -397,4 +396,6 @@ This covers the basics, but forms can do a whole lot more:
 
 .. seealso::
 
-    The :ref:`form API reference <ref-forms-index>`.
+    :doc:`The Forms Reference </ref/forms/index>`
+        Covers the full API reference, including form fields, form widgets, 
+        and form and field validation.

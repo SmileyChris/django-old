@@ -1,5 +1,3 @@
-.. _ref-contrib-admin-actions:
-
 =============
 Admin actions
 =============
@@ -177,6 +175,8 @@ Defining actions as methods gives the action more straightforward, idiomatic
 access to the :class:`ModelAdmin` itself, allowing the action to call any of the
 methods provided by the admin.
 
+.. _custom-admin-action:
+
 For example, we can use ``self`` to flash a message to the user informing her
 that the action was successful::
 
@@ -208,7 +208,7 @@ objects.
 To provide an intermediary page, simply return an
 :class:`~django.http.HttpResponse` (or subclass) from your action. For
 example, you might write a simple export function that uses Django's
-:ref:`serialization functions <topics-serialization>` to dump some selected
+:doc:`serialization functions </topics/serialization>` to dump some selected
 objects as JSON::
 
     from django.http import HttpResponse
@@ -294,7 +294,7 @@ Disabling a site-wide action
     site-wide.
     
     If, however, you need to re-enable a globally-disabled action for one
-    particular model, simply list it explicitally in your ``ModelAdmin.actions``
+    particular model, simply list it explicitly in your ``ModelAdmin.actions``
     list::
     
         # Globally disable delete selected

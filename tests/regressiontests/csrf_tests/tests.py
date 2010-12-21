@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
+import warnings
 
 from django.test import TestCase
 from django.http import HttpRequest, HttpResponse
 from django.middleware.csrf import CsrfMiddleware, CsrfViewMiddleware
-from django.views.decorators.csrf import csrf_exempt, csrf_view_exempt
+from django.views.decorators.csrf import csrf_exempt, csrf_view_exempt, requires_csrf_token
 from django.core.context_processors import csrf
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.utils.importlib import import_module
@@ -12,8 +13,8 @@ from django.template import RequestContext, Template
 
 # Response/views used for CsrfResponseMiddleware and CsrfViewMiddleware tests
 def post_form_response():
-    resp = HttpResponse(content="""
-<html><body><form method="post"><input type="text" /></form></body></html>
+    resp = HttpResponse(content=u"""
+<html><body><h1>\u00a1Unicode!<form method="post"><input type="text" /></form></body></html>
 """, mimetype="text/html")
     return resp
 
@@ -56,6 +57,9 @@ class TestingHttpRequest(HttpRequest):
         return getattr(self, '_is_secure', False)
 
 class CsrfMiddlewareTest(TestCase):
+    # The csrf token is potentially from an untrusted source, so could have
+    # characters that need dealing with.
+    _csrf_id_cookie = "<1>\xc2\xa1"
     _csrf_id = "1"
 
     # This is a valid session token for this ID and secret key.  This was generated using
@@ -66,12 +70,20 @@ class CsrfMiddlewareTest(TestCase):
     _session_id = "1"
     _secret_key_for_session_test= "test"
 
+    def setUp(self):
+        self.save_warnings_state()
+        warnings.filterwarnings('ignore', category=DeprecationWarning,
+                                module='django.middleware.csrf')
+
+    def tearDown(self):
+        self.restore_warnings_state()
+
     def _get_GET_no_csrf_cookie_request(self):
         return TestingHttpRequest()
 
     def _get_GET_csrf_cookie_request(self):
         req = TestingHttpRequest()
-        req.COOKIES[settings.CSRF_COOKIE_NAME] = self._csrf_id
+        req.COOKIES[settings.CSRF_COOKIE_NAME] = self._csrf_id_cookie
         return req
 
     def _get_POST_csrf_cookie_request(self):
@@ -204,8 +216,11 @@ class CsrfMiddlewareTest(TestCase):
         """
         Check that no post processing is done for an exempt view
         """
-        req = self._get_POST_csrf_cookie_request()
-        resp = csrf_exempt(post_form_view)(req)
+        req = self._get_GET_csrf_cookie_request()
+        view = csrf_exempt(post_form_view)
+        CsrfMiddleware().process_view(req, view, (), {})
+
+        resp = view(req)
         resp_content = resp.content
         resp2 = CsrfMiddleware().process_response(req, resp)
         self.assertEquals(resp_content, resp2.content)
@@ -287,6 +302,17 @@ class CsrfMiddlewareTest(TestCase):
         resp = token_view(req)
         self.assertEquals(u"", resp.content)
 
+    def test_token_node_empty_csrf_cookie(self):
+        """
+        Check that we get a new token if the csrf_cookie is the empty string
+        """
+        req = self._get_GET_no_csrf_cookie_request()
+        req.COOKIES[settings.CSRF_COOKIE_NAME] = ""
+        CsrfViewMiddleware().process_view(req, token_view, (), {})
+        resp = token_view(req)
+
+        self.assertNotEqual(u"", resp.content)
+
     def test_token_node_with_csrf_cookie(self):
         """
         Check that CsrfTokenNode works when a CSRF cookie is set
@@ -303,6 +329,14 @@ class CsrfMiddlewareTest(TestCase):
         req = self._get_GET_csrf_cookie_request()
         CsrfViewMiddleware().process_view(req, csrf_view_exempt(token_view), (), {})
         resp = token_view(req)
+        self._check_token_present(resp)
+
+    def test_get_token_for_requires_csrf_token_view(self):
+        """
+        Check that get_token works for a view decorated solely with requires_csrf_token
+        """
+        req = self._get_GET_csrf_cookie_request()
+        resp = requires_csrf_token(token_view)(req)
         self._check_token_present(resp)
 
     def test_token_node_with_new_csrf_cookie(self):

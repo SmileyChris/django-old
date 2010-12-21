@@ -44,7 +44,9 @@ class Serializer(base.Serializer):
         self.indent(1)
         object_data = {"model": smart_unicode(obj._meta)}
         if not self.use_natural_keys or not hasattr(obj, 'natural_key'):
-            object_data['pk'] = smart_unicode(obj._get_pk_val())
+            obj_pk = obj._get_pk_val()
+            if obj_pk:
+                object_data['pk'] = smart_unicode(obj_pk)
         self.xml.startElement("object", object_data)
 
     def end_object(self, obj):

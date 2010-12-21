@@ -5,14 +5,22 @@ import os
 import sys
 import pickle
 
-from django.template import Template, Context
 from django.conf import settings
-from django.utils.formats import get_format, date_format, time_format, localize, localize_input
+from django.template import Template, Context
+from django.utils.formats import get_format, date_format, time_format, localize, localize_input, iter_format_modules
+from django.utils.importlib import import_module
 from django.utils.numberformat import format as nformat
-from django.test import TestCase
-from django.utils.translation import ugettext, ugettext_lazy, activate, deactivate, gettext_lazy, to_locale
+from django.utils.safestring import mark_safe, SafeString, SafeUnicode
+from django.utils.translation import (ugettext, ugettext_lazy, activate,
+        deactivate, gettext_lazy, pgettext, npgettext, to_locale,
+        get_language_info)
+from django.utils.unittest import TestCase
+
 
 from forms import I18nForm, SelectDateForm, SelectDateWidget, CompanyForm
+from models import Company, TestModel
+
+from commands.tests import *
 
 
 class TranslationTests(TestCase):
@@ -48,6 +56,22 @@ class TranslationTests(TestCase):
         s2 = pickle.loads(pickle.dumps(s1))
         self.assertEqual(unicode(s2), "test")
 
+    def test_pgettext(self):
+        # Reset translation catalog to include other/locale/de
+        self.old_locale_paths = settings.LOCALE_PATHS
+        settings.LOCALE_PATHS += (os.path.join(os.path.dirname(os.path.abspath(__file__)), 'other', 'locale'),)
+        from django.utils.translation import trans_real
+        trans_real._active = {}
+        trans_real._translations = {}
+        activate('de')
+
+        self.assertEqual(pgettext("unexisting", "May"), u"May")
+        self.assertEqual(pgettext("month name", "May"), u"Mai")
+        self.assertEqual(pgettext("verb", "May"), u"Kann")
+        self.assertEqual(npgettext("search", "%d result", "%d results", 4) % 4, u"4 Resultate")
+
+        settings.LOCALE_PATHS = self.old_locale_paths
+
     def test_string_concat(self):
         """
         unicode(string_concat(...)) should not raise a TypeError - #4796
@@ -59,7 +83,6 @@ class TranslationTests(TestCase):
         """
         Translating a string requiring no auto-escaping shouldn't change the "safe" status.
         """
-        from django.utils.safestring import mark_safe, SafeString, SafeUnicode
         s = mark_safe('Password')
         self.assertEqual(SafeString, type(s))
         activate('de')
@@ -119,12 +142,14 @@ class FormattingTests(TestCase):
         self.d = datetime.date(2009, 12, 31)
         self.dt = datetime.datetime(2009, 12, 31, 20, 50)
         self.t = datetime.time(10, 15, 48)
+        self.l = 10000L
         self.ctxt = Context({
             'n': self.n,
             't': self.t,
             'd': self.d,
             'dt': self.dt,
-            'f': self.f
+            'f': self.f,
+            'l': self.l,
         })
 
     def tearDown(self):
@@ -149,6 +174,7 @@ class FormattingTests(TestCase):
         self.assertEqual(u'6B6B6B6B6A6', nformat(self.n, decimal_sep='A', decimal_pos=1, grouping=1, thousand_sep='B'))
         self.assertEqual(u'-66666.6', nformat(-66666.666, decimal_sep='.', decimal_pos=1))
         self.assertEqual(u'-66666.0', nformat(int('-66666'), decimal_sep='.', decimal_pos=1))
+        self.assertEqual(u'10000.0', nformat(self.l, decimal_sep='.', decimal_pos=1))
 
         # date filter
         self.assertEqual(u'31.12.2009 в 20:50', Template('{{ dt|date:"d.m.Y в H:i" }}').render(self.ctxt))
@@ -162,22 +188,23 @@ class FormattingTests(TestCase):
         settings.USE_L10N = False
         activate('ca')
         try:
-            self.assertEqual('N j, Y', get_format('DATE_FORMAT'))
+            self.assertEqual(u'N j, Y', get_format('DATE_FORMAT'))
             self.assertEqual(0, get_format('FIRST_DAY_OF_WEEK'))
-            self.assertEqual('.', get_format('DECIMAL_SEPARATOR'))
+            self.assertEqual(u'.', get_format('DECIMAL_SEPARATOR'))
             self.assertEqual(u'10:15 a.m.', time_format(self.t))
             self.assertEqual(u'des. 31, 2009', date_format(self.d))
             self.assertEqual(u'desembre 2009', date_format(self.d, 'YEAR_MONTH_FORMAT'))
             self.assertEqual(u'12/31/2009 8:50 p.m.', date_format(self.dt, 'SHORT_DATETIME_FORMAT'))
-            self.assertEqual('No localizable', localize('No localizable'))
-            self.assertEqual(decimal.Decimal('66666.666'), localize(self.n))
-            self.assertEqual(99999.999, localize(self.f))
-            self.assertEqual(datetime.date(2009, 12, 31), localize(self.d))
-            self.assertEqual(datetime.datetime(2009, 12, 31, 20, 50), localize(self.dt))
+            self.assertEqual(u'No localizable', localize('No localizable'))
+            self.assertEqual(u'66666.666', localize(self.n))
+            self.assertEqual(u'99999.999', localize(self.f))
+            self.assertEqual(u'10000', localize(self.l))
+            self.assertEqual(u'des. 31, 2009', localize(self.d))
+            self.assertEqual(u'des. 31, 2009, 8:50 p.m.', localize(self.dt))
             self.assertEqual(u'66666.666', Template('{{ n }}').render(self.ctxt))
             self.assertEqual(u'99999.999', Template('{{ f }}').render(self.ctxt))
-            self.assertEqual(u'2009-12-31', Template('{{ d }}').render(self.ctxt))
-            self.assertEqual(u'2009-12-31 20:50:00', Template('{{ dt }}').render(self.ctxt))
+            self.assertEqual(u'des. 31, 2009', Template('{{ d }}').render(self.ctxt))
+            self.assertEqual(u'des. 31, 2009, 8:50 p.m.', Template('{{ dt }}').render(self.ctxt))
             self.assertEqual(u'66666.67', Template('{{ n|floatformat:2 }}').render(self.ctxt))
             self.assertEqual(u'100000.0', Template('{{ f|floatformat }}').render(self.ctxt))
             self.assertEqual(u'10:15 a.m.', Template('{{ t|time:"TIME_FORMAT" }}').render(self.ctxt))
@@ -242,16 +269,20 @@ class FormattingTests(TestCase):
             settings.USE_THOUSAND_SEPARATOR = True
             self.assertEqual(u'66.666,666', localize(self.n))
             self.assertEqual(u'99.999,999', localize(self.f))
+            self.assertEqual(u'10.000', localize(self.l))
+            self.assertEqual(u'True', localize(True))
 
             settings.USE_THOUSAND_SEPARATOR = False
             self.assertEqual(u'66666,666', localize(self.n))
             self.assertEqual(u'99999,999', localize(self.f))
+            self.assertEqual(u'10000', localize(self.l))
             self.assertEqual(u'31 de desembre de 2009', localize(self.d))
             self.assertEqual(u'31 de desembre de 2009 a les 20:50', localize(self.dt))
 
             settings.USE_THOUSAND_SEPARATOR = True
             self.assertEqual(u'66.666,666', Template('{{ n }}').render(self.ctxt))
             self.assertEqual(u'99.999,999', Template('{{ f }}').render(self.ctxt))
+            self.assertEqual(u'10.000', Template('{{ l }}').render(self.ctxt))
 
             form3 = I18nForm({
                 'decimal_field': u'66.666,666',
@@ -321,21 +352,24 @@ class FormattingTests(TestCase):
             self.assertEqual(u'Dec. 31, 2009', date_format(self.d))
             self.assertEqual(u'December 2009', date_format(self.d, 'YEAR_MONTH_FORMAT'))
             self.assertEqual(u'12/31/2009 8:50 p.m.', date_format(self.dt, 'SHORT_DATETIME_FORMAT'))
-            self.assertEqual('No localizable', localize('No localizable'))
+            self.assertEqual(u'No localizable', localize('No localizable'))
 
             settings.USE_THOUSAND_SEPARATOR = True
             self.assertEqual(u'66,666.666', localize(self.n))
             self.assertEqual(u'99,999.999', localize(self.f))
+            self.assertEqual(u'10,000', localize(self.l))
 
             settings.USE_THOUSAND_SEPARATOR = False
             self.assertEqual(u'66666.666', localize(self.n))
             self.assertEqual(u'99999.999', localize(self.f))
+            self.assertEqual(u'10000', localize(self.l))
             self.assertEqual(u'Dec. 31, 2009', localize(self.d))
             self.assertEqual(u'Dec. 31, 2009, 8:50 p.m.', localize(self.dt))
 
             settings.USE_THOUSAND_SEPARATOR = True
             self.assertEqual(u'66,666.666', Template('{{ n }}').render(self.ctxt))
             self.assertEqual(u'99,999.999', Template('{{ f }}').render(self.ctxt))
+            self.assertEqual(u'10,000', Template('{{ l }}').render(self.ctxt))
 
             settings.USE_THOUSAND_SEPARATOR = False
             self.assertEqual(u'66666.666', Template('{{ n }}').render(self.ctxt))
@@ -420,6 +454,50 @@ class FormattingTests(TestCase):
             self.assert_(u'<input type="text" name="products_delivered" value="12.000" id="id_products_delivered" />' in form6.as_ul())
         finally:
             deactivate()
+
+    def test_iter_format_modules(self):
+        """
+        Tests the iter_format_modules function.
+        """
+        activate('de-at')
+        old_format_module_path = settings.FORMAT_MODULE_PATH
+        try:
+            settings.USE_L10N = True
+            de_format_mod = import_module('django.conf.locale.de.formats')
+            self.assertEqual(list(iter_format_modules('de')), [de_format_mod])
+            settings.FORMAT_MODULE_PATH = 'regressiontests.i18n.other.locale'
+            test_de_format_mod = import_module('regressiontests.i18n.other.locale.de.formats')
+            self.assertEqual(list(iter_format_modules('de')), [test_de_format_mod, de_format_mod])
+        finally:
+            settings.FORMAT_MODULE_PATH = old_format_module_path
+            deactivate()
+
+    def test_localize_templatetag_and_filter(self):
+        """
+        Tests the {% localize %} templatetag
+        """
+        context = Context({'value': 3.14 })
+        template1 = Template("{% load l10n %}{% localize %}{{ value }}{% endlocalize %};{% localize on %}{{ value }}{% endlocalize %}")
+        template2 = Template("{% load l10n %}{{ value }};{% localize off %}{{ value }};{% endlocalize %}{{ value }}")
+        template3 = Template('{% load l10n %}{{ value }};{{ value|unlocalize }}')
+        template4 = Template('{% load l10n %}{{ value }};{{ value|localize }}')
+        output1 = '3,14;3,14'
+        output2 = '3,14;3.14;3,14'
+        output3 = '3,14;3.14'
+        output4 = '3.14;3,14'
+        old_localize = settings.USE_L10N
+        try:
+            activate('de')
+            settings.USE_L10N = False
+            self.assertEqual(template1.render(context), output1)
+            self.assertEqual(template4.render(context), output4)
+            settings.USE_L10N = True
+            self.assertEqual(template1.render(context), output1)
+            self.assertEqual(template2.render(context), output2)
+            self.assertEqual(template3.render(context), output3)
+        finally:
+            deactivate()
+            settings.USE_L10N = old_localize
 
 class MiscTests(TestCase):
 
@@ -620,3 +698,25 @@ class DjangoFallbackResolutionOrderI18NTests(ResolutionOrderI18NTests):
 
     def test_django_fallback(self):
         self.assertUgettext('Date/time', 'Datum/Zeit')
+
+
+class TestModels(TestCase):
+    def test_lazy(self):
+        tm = TestModel()
+        tm.save()
+
+    def test_safestr(self):
+        c = Company(cents_payed=12, products_delivered=1)
+        c.name = SafeUnicode(u'Iñtërnâtiônàlizætiøn1')
+        c.save()
+        c.name = SafeString(u'Iñtërnâtiônàlizætiøn1'.encode('utf-8'))
+        c.save()
+
+
+class TestLanguageInfo(TestCase):
+    def test_localized_language_info(self):
+        li = get_language_info('de')
+        self.assertEqual(li['code'], 'de')
+        self.assertEqual(li['name_local'], u'Deutsch')
+        self.assertEqual(li['name'], 'German')
+        self.assertEqual(li['bidi'], False)
