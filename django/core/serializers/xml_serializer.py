@@ -169,11 +169,10 @@ class Deserializer(base.Deserializer):
         Model = self._get_model_from_node(node, "model")
 
         # Start building a data dictionary from the object.
+        data = {}
         if node.hasAttribute('pk'):
-            obj_pk = node.getAttribute('pk')
-        else:
-            obj_pk = None
-        data = {Model._meta.pk.attname: Model._meta.pk.to_python(obj_pk)}
+            data[Model._meta.pk.attname] = Model._meta.pk.to_python(
+                                                    node.getAttribute('pk'))
 
         # Also start building a dict of m2m data (this is saved as
         # {m2m_accessor_attribute : [list_of_related_objects]})
