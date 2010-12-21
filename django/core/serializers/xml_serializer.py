@@ -45,7 +45,7 @@ class Serializer(base.Serializer):
         object_data = {"model": smart_unicode(obj._meta)}
         if not self.use_natural_keys or not hasattr(obj, 'natural_key'):
             obj_pk = obj._get_pk_val()
-            if obj_pk:
+            if obj_pk is not None:
                 object_data['pk'] = smart_unicode(obj_pk)
         self.xml.startElement("object", object_data)
 
@@ -169,10 +169,11 @@ class Deserializer(base.Deserializer):
         Model = self._get_model_from_node(node, "model")
 
         # Start building a data dictionary from the object.
-        data = {}
         if node.hasAttribute('pk'):
-            data[Model._meta.pk.attname] = Model._meta.pk.to_python(
-                                                    node.getAttribute('pk'))
+            obj_pk = node.getAttribute('pk')
+        else:
+            obj_pk = None
+        data = {Model._meta.pk.attname: Model._meta.pk.to_python(obj_pk)}
 
         # Also start building a dict of m2m data (this is saved as
         # {m2m_accessor_attribute : [list_of_related_objects]})
