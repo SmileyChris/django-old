@@ -1,4 +1,5 @@
 from math import ceil
+import collections
 
 class InvalidPage(Exception):
     pass
@@ -75,7 +76,7 @@ class Paginator(object):
 
 QuerySetPaginator = Paginator # For backwards-compatibility.
 
-class Page(object):
+class Page(collections.Sequence):
     def __init__(self, object_list, number, paginator):
         self.object_list = object_list
         self.number = number
@@ -83,6 +84,14 @@ class Page(object):
 
     def __repr__(self):
         return '<Page %s of %s>' % (self.number, self.paginator.num_pages)
+
+    def __len__(self):
+        return len(self.object_list)
+
+    def __getitem__(self, index):
+        # The object_list is converted to a list so that if it was a QuerySet
+        # it won't be a database hit per __getitem__.
+        return list(self.object_list)[index]
 
     def has_next(self):
         return self.number < self.paginator.num_pages
