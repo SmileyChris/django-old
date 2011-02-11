@@ -19,7 +19,7 @@ from django.core import validators
 import django.utils.copycompat as copy
 from django.utils import formats
 from django.utils.translation import ugettext_lazy as _
-from django.utils.encoding import smart_unicode, smart_str
+from django.utils.encoding import smart_unicode, smart_str, force_unicode
 from django.utils.functional import lazy
 
 # Provide this import for backwards compatibility.
@@ -336,77 +336,90 @@ class DecimalField(Field):
             raise ValidationError(self.error_messages['max_whole_digits'] % (self.max_digits - self.decimal_places))
         return value
 
-class DateField(Field):
+class BaseTemporalField(Field):
+    def __init__(self, input_formats=None, *args, **kwargs):
+        super(BaseTemporalField, self).__init__(*args, **kwargs)
+        self.input_formats = input_formats
+
+    def get_input_formats(self):
+        return self.input_formats or []
+
+    def to_python(self, value):
+        # Try to coerce the value to a string
+        unicode_value = force_unicode(value, strings_only=True)
+        if isinstance(unicode_value, unicode):
+            value = unicode_value.strip()
+        if value in validators.EMPTY_VALUES:
+            return None
+        for format in self.get_input_formats():
+            try:
+                return self.from_unicode(value)
+            except ValueError:
+                continue
+        raise ValidationError(self.error_messages['invalid'])
+
+    def from_unicode(self, value):
+        raise NotImplementedError('Subclasses must define this method.')
+
+class DateField(BaseTemporalField):
     widget = DateInput
     default_error_messages = {
         'invalid': _(u'Enter a valid date.'),
     }
 
-    def __init__(self, input_formats=None, *args, **kwargs):
-        super(DateField, self).__init__(*args, **kwargs)
-        self.input_formats = input_formats
+    def get_input_formats(self):
+        return self.input_formats or formats.get_format('DATE_INPUT_FORMATS')
 
     def to_python(self, value):
         """
         Validates that the input can be converted to a date. Returns a Python
         datetime.date object.
         """
-        if value in validators.EMPTY_VALUES:
-            return None
         if isinstance(value, datetime.datetime):
             return value.date()
         if isinstance(value, datetime.date):
             return value
-        for format in self.input_formats or formats.get_format('DATE_INPUT_FORMATS'):
-            try:
-                return datetime.date(*time.strptime(value, format)[:3])
-            except ValueError:
-                continue
-        raise ValidationError(self.error_messages['invalid'])
+        return super(DateField, self).to_python(value)
 
-class TimeField(Field):
+    def from_unicode(self, value):
+        return datetime.date(*time.strptime(value, format)[:3])
+
+class TimeField(BaseTemporalField):
     widget = TimeInput
     default_error_messages = {
         'invalid': _(u'Enter a valid time.')
     }
 
-    def __init__(self, input_formats=None, *args, **kwargs):
-        super(TimeField, self).__init__(*args, **kwargs)
-        self.input_formats = input_formats
+    def get_input_formats(self):
+        return self.input_formats or formats.get_format('TIME_INPUT_FORMATS')
 
     def to_python(self, value):
         """
         Validates that the input can be converted to a time. Returns a Python
         datetime.time object.
         """
-        if value in validators.EMPTY_VALUES:
-            return None
         if isinstance(value, datetime.time):
             return value
-        for format in self.input_formats or formats.get_format('TIME_INPUT_FORMATS'):
-            try:
-                return datetime.time(*time.strptime(value, format)[3:6])
-            except ValueError:
-                continue
-        raise ValidationError(self.error_messages['invalid'])
+        return super(TimeField, self).to_python(value)
 
-class DateTimeField(Field):
+    def from_unicode(self, value):
+        return datetime.time(*time.strptime(value, format)[3:6])
+
+class DateTimeField(BaseTemporalField):
     widget = DateTimeInput
     default_error_messages = {
         'invalid': _(u'Enter a valid date/time.'),
     }
 
-    def __init__(self, input_formats=None, *args, **kwargs):
-        super(DateTimeField, self).__init__(*args, **kwargs)
-        self.input_formats = input_formats
+    def get_input_formats(self):
+        return (self.input_formats or
+                formats.get_format('DATETIME_INPUT_FORMATS'))
 
     def to_python(self, value):
         """
         Validates that the input can be converted to a datetime. Returns a
         Python datetime.datetime object.
         """
-        if value in validators.EMPTY_VALUES:
-            return None
         if isinstance(value, datetime.datetime):
             return value
         if isinstance(value, datetime.date):
@@ -419,12 +432,10 @@ class DateTimeField(Field):
             if value[0] in validators.EMPTY_VALUES and value[1] in validators.EMPTY_VALUES:
                 return None
             value = '%s %s' % tuple(value)
-        for format in self.input_formats or formats.get_format('DATETIME_INPUT_FORMATS'):
-            try:
-                return datetime.datetime(*time.strptime(value, format)[:6])
-            except ValueError:
-                continue
-        raise ValidationError(self.error_messages['invalid'])
+        return super(DateTimeField, self).to_python(value)
+
+    def from_unicode(self, value):
+        return datetime.datetime(*time.strptime(value, format)[:6])
 
 class RegexField(CharField):
     def __init__(self, regex, max_length=None, min_length=None, error_message=None, *args, **kwargs):
