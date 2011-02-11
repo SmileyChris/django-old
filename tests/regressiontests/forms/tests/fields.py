@@ -333,6 +333,17 @@ class FieldsTests(TestCase):
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid date.']", f.clean, '10/25/2006')
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid date.']", f.clean, '10/25/06')
 
+    def test_datefield_4(self):
+        # Test whitespace stripping behavior (#5714)
+        f = DateField() 
+        self.assertEqual(datetime.date(2006, 10, 25), f.clean(' 10/25/2006 ')) 
+        self.assertEqual(datetime.date(2006, 10, 25), f.clean(' 10/25/06 ')) 
+        self.assertEqual(datetime.date(2006, 10, 25), f.clean(' Oct 25   2006 ')) 
+        self.assertEqual(datetime.date(2006, 10, 25), f.clean(' October  25 2006 ')) 
+        self.assertEqual(datetime.date(2006, 10, 25), f.clean(' October 25, 2006 ')) 
+        self.assertEqual(datetime.date(2006, 10, 25), f.clean(' 25 October 2006 ')) 
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'This field is required.']", f.clean, '   ')
+
     # TimeField ###################################################################
 
     def test_timefield_1(self):
@@ -351,6 +362,13 @@ class FieldsTests(TestCase):
         self.assertEqual(datetime.time(4, 25), f.clean('4:25 AM'))
         self.assertEqual(datetime.time(16, 25), f.clean('4:25 PM'))
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid time.']", f.clean, '14:30:45')
+
+    def test_timefield_3(self):
+        f = TimeField()
+        # Test whitespace stripping behavior (#5714) 
+        self.assertEqual(datetime.time(14, 25), f.clean(' 14:25 ')) 
+        self.assertEqual(datetime.time(14, 25, 59), f.clean(' 14:25:59 ')) 
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'This field is required.']", f.clean, '   ')
 
     # DateTimeField ###############################################################
 
@@ -390,6 +408,18 @@ class FieldsTests(TestCase):
         self.assertEqual('None', repr(f.clean(None)))
         self.assertEqual(None, f.clean(''))
         self.assertEqual('None', repr(f.clean('')))
+
+    def test_datetimefield_4(self):
+        f = DateTimeField()
+        # Test whitespace stripping behavior (#5714) 
+        self.assertEqual(datetime.datetime(2006, 10, 25, 14, 30, 45), f.clean(' 2006-10-25   14:30:45 ')) 
+        self.assertEqual(datetime.datetime(2006, 10, 25, 0, 0), f.clean(' 2006-10-25 ')) 
+        self.assertEqual(datetime.datetime(2006, 10, 25, 14, 30, 45), f.clean(' 10/25/2006 14:30:45 ')) 
+        self.assertEqual(datetime.datetime(2006, 10, 25, 14, 30), f.clean(' 10/25/2006 14:30 ')) 
+        self.assertEqual(datetime.datetime(2006, 10, 25, 0, 0), f.clean(' 10/25/2006 ')) 
+        self.assertEqual(datetime.datetime(2006, 10, 25, 14, 30, 45), f.clean(' 10/25/06 14:30:45 ')) 
+        self.assertEqual(datetime.datetime(2006, 10, 25, 0, 0), f.clean(' 10/25/06 ')) 
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'This field is required.']", f.clean, '   ')
 
     # RegexField ##################################################################
 

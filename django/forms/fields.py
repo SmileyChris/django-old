@@ -341,24 +341,27 @@ class BaseTemporalField(Field):
         super(BaseTemporalField, self).__init__(*args, **kwargs)
         self.input_formats = input_formats
 
-    def get_input_formats(self):
-        return self.input_formats or []
-
     def to_python(self, value):
-        # Try to coerce the value to a string
+        # Try to coerce the value to unicode.
         unicode_value = force_unicode(value, strings_only=True)
         if isinstance(unicode_value, unicode):
             value = unicode_value.strip()
+        # If empty, return None
         if value in validators.EMPTY_VALUES:
             return None
-        for format in self.get_input_formats():
-            try:
-                return self.from_unicode(value)
-            except ValueError:
-                continue
+        # If unicode, try to strptime against each import format.
+        if isinstance(value, unicode):
+            for format in self.get_input_formats():
+                try:
+                    return self.strptime(value, format)
+                except ValueError:
+                    continue
         raise ValidationError(self.error_messages['invalid'])
 
-    def from_unicode(self, value):
+    def get_input_formats(self):
+        return self.input_formats or []
+
+    def strptime(self, value, format):
         raise NotImplementedError('Subclasses must define this method.')
 
 class DateField(BaseTemporalField):
@@ -366,9 +369,6 @@ class DateField(BaseTemporalField):
     default_error_messages = {
         'invalid': _(u'Enter a valid date.'),
     }
-
-    def get_input_formats(self):
-        return self.input_formats or formats.get_format('DATE_INPUT_FORMATS')
 
     def to_python(self, value):
         """
@@ -381,7 +381,10 @@ class DateField(BaseTemporalField):
             return value
         return super(DateField, self).to_python(value)
 
-    def from_unicode(self, value):
+    def get_input_formats(self):
+        return self.input_formats or formats.get_format('DATE_INPUT_FORMATS')
+
+    def strptime(self, value, format):
         return datetime.date(*time.strptime(value, format)[:3])
 
 class TimeField(BaseTemporalField):
@@ -389,9 +392,6 @@ class TimeField(BaseTemporalField):
     default_error_messages = {
         'invalid': _(u'Enter a valid time.')
     }
-
-    def get_input_formats(self):
-        return self.input_formats or formats.get_format('TIME_INPUT_FORMATS')
 
     def to_python(self, value):
         """
@@ -402,7 +402,10 @@ class TimeField(BaseTemporalField):
             return value
         return super(TimeField, self).to_python(value)
 
-    def from_unicode(self, value):
+    def get_input_formats(self):
+        return self.input_formats or formats.get_format('TIME_INPUT_FORMATS')
+
+    def strptime(self, value, format):
         return datetime.time(*time.strptime(value, format)[3:6])
 
 class DateTimeField(BaseTemporalField):
@@ -410,10 +413,6 @@ class DateTimeField(BaseTemporalField):
     default_error_messages = {
         'invalid': _(u'Enter a valid date/time.'),
     }
-
-    def get_input_formats(self):
-        return (self.input_formats or
-                formats.get_format('DATETIME_INPUT_FORMATS'))
 
     def to_python(self, value):
         """
@@ -434,7 +433,11 @@ class DateTimeField(BaseTemporalField):
             value = '%s %s' % tuple(value)
         return super(DateTimeField, self).to_python(value)
 
-    def from_unicode(self, value):
+    def get_input_formats(self):
+        return (self.input_formats or
+                formats.get_format('DATETIME_INPUT_FORMATS'))
+
+    def strptime(self, value, format):
         return datetime.datetime(*time.strptime(value, format)[:6])
 
 class RegexField(CharField):
