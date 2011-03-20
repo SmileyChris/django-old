@@ -5,6 +5,7 @@ import time
 from pprint import pformat
 from urllib import urlencode, quote
 from urlparse import urljoin
+import calendar
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -119,7 +120,7 @@ class CompatCookie(SimpleCookie):
 
 from django.utils.datastructures import MultiValueDict, ImmutableList
 from django.utils.encoding import smart_str, iri_to_uri, force_unicode
-from django.utils.http import cookie_date
+from django.utils.http import cookie_date, parse_http_date
 from django.http.multipartparser import MultiPartParser
 from django.conf import settings
 from django.core.files import uploadhandler
@@ -453,6 +454,50 @@ class QueryDict(MultiValueDict):
             output.extend([encode(k, smart_str(v, self.encoding))
                            for v in list_])
         return '&'.join(output)
+
+class MultiDomainCookie(SimpleCookie):
+
+    def __init__(self, *args, **kwargs):
+        super(SimpleCookie, self).__init__(*args, **kwargs)
+        self.domains = {}
+
+    def for_domain(self, domain):
+        cookies = SimpleCookie()
+        keys = [key for key in self.domains if not key or key == domain or
+                (key.startswith('.') and domain.endswith(key))]
+        # Sort the keys so the shortest (and therefore least specific) domain
+        # cookies are set first, allowing them to be overridden by more
+        # specific ones.
+        keys.sort(key=len)
+        for key in keys:
+            self.remove_expired_cookies(self.domains[key])
+            cookies.update(self.domains[key])
+        return cookies
+
+    def remove_expired_cookies(self, cookies):
+        for name, morsel in cookies.items():
+            if morsel['expires']:
+                expires = parse_http_date(morsel['expires'].replace('-', ' '))
+                current_time = calendar.timegm(
+                    datetime.datetime.utcnow().utctimetuple()
+                )
+                if expires < current_time:
+                    del cookies[name]
+
+    def __setitem__(self, key, value):
+        super(SimpleCookie, self).__setitem__(key, value)
+        self._set_domain_cookie(key)
+        
+    def _set_domain_cookie(self, key):
+        morsel = self[key]
+        domain_cookie = self.domains.setdefault(morsel['domain'],
+                                                SimpleCookie())
+        domain_cookie.load(str(morsel))
+
+    def update(self, obj, *args, **kwargs):
+        super(MultiDomainCookie, self).update(obj, *args, **kwargs)
+        for key in obj:
+            self._set_domain_cookie(key)
 
 def parse_cookie(cookie):
     if cookie == '':

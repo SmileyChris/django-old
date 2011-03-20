@@ -16,7 +16,7 @@ from django.contrib.auth import authenticate, login
 from django.core.handlers.base import BaseHandler
 from django.core.handlers.wsgi import WSGIRequest
 from django.core.signals import got_request_exception
-from django.http import SimpleCookie, HttpRequest, QueryDict
+from django.http import MultiDomainCookie, HttpRequest, QueryDict
 from django.template import TemplateDoesNotExist
 from django.test import signals
 from django.utils.functional import curry
@@ -175,7 +175,7 @@ class RequestFactory(object):
     """
     def __init__(self, **defaults):
         self.defaults = defaults
-        self.cookies = SimpleCookie()
+        self.cookies = MultiDomainCookie()
         self.errors = StringIO()
 
     def _base_environ(self, **request):
@@ -183,7 +183,6 @@ class RequestFactory(object):
         The base environment for a request.
         """
         environ = {
-            'HTTP_COOKIE':       self.cookies.output(header='', sep='; '),
             'PATH_INFO':         '/',
             'QUERY_STRING':      '',
             'REMOTE_ADDR':       '127.0.0.1',
@@ -201,6 +200,13 @@ class RequestFactory(object):
         }
         environ.update(self.defaults)
         environ.update(request)
+        if 'HTTP_COOKIE' not in environ:
+            host = environ.get('HTTP_HOST')
+            if host:
+                cookies = self.cookies.for_domain(host)
+            else:
+                cookies = self.cookies
+            environ['HTTP_COOKIE'] = cookies.output(header='', sep='; ')
         return environ
 
     def request(self, **request):
@@ -431,6 +437,11 @@ class Client(RequestFactory):
 
             # Update persistent cookie data.
             if response.cookies:
+                host = environ.get('HTTP_HOST')
+                if host:
+                    for name in response.cookies:
+                        if not response.cookies[name]['domain']:
+                            response.cookies[name]['domain'] = host
                 self.cookies.update(response.cookies)
 
             return response
@@ -544,7 +555,7 @@ class Client(RequestFactory):
         session_cookie = self.cookies.get(settings.SESSION_COOKIE_NAME)
         if session_cookie:
             session.delete(session_key=session_cookie.value)
-        self.cookies = SimpleCookie()
+        self.cookies = MultiDomainCookie()
 
     def _handle_redirects(self, response, **extra):
         "Follows any redirects by requesting responses from the server using GET."

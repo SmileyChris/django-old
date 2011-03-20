@@ -8,6 +8,7 @@ from django.forms.forms import Form
 from django.forms import fields
 from django.shortcuts import render_to_response
 from django.utils.decorators import method_decorator
+from django.utils.encoding import smart_str
 
 def get_view(request):
     "A simple view that expects a GET request, and returns a rendered template"
@@ -212,3 +213,14 @@ def mass_mail_sending_view(request):
     c.send_messages([m1,m2])
 
     return HttpResponse("Mail sent")
+
+def set_cookie_view(request):
+    response = HttpResponse('')
+    domain = smart_str(request.GET.get('domain'), strings_only=True)
+    value = request.GET.get('value', '1')
+    response.set_cookie(str(request.GET['cookie']), value=value, domain=domain)
+    return response
+
+def show_cookies_view(request):
+    return HttpResponse(', '.join('%s=%s' % (k, request.COOKIES[k])
+                                  for k in sorted(request.COOKIES)))

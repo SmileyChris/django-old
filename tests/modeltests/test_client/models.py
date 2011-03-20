@@ -445,6 +445,74 @@ class ClientTest(TestCase):
         self.assertEqual(mail.outbox[1].to[0], 'second@example.com')
         self.assertEqual(mail.outbox[1].to[1], 'third@example.com')
 
+    def test_domain_specific_cookies(self):
+        self.client.get('/test_client/set_cookie_view/',
+            {'cookie': 'standard'})
+        self.client.get('/test_client/set_cookie_view/',
+            {'cookie': 'example', 'domain': 'www.example.com'})
+        self.client.get('/test_client/set_cookie_view/',
+            {'cookie': 'example_shared', 'domain': '.example.com'})
+        self.client.get('/test_client/set_cookie_view/',
+            {'cookie': 'testclient', 'domain': 'testclient'})
+        self.assertEqual(
+            set(self.client.cookies),
+            set(['standard', 'example', 'example_shared', 'testclient']))
+        # With no host, all the cookies are available.
+        response = self.client.get('/test_client/show_cookies_view/')
+        self.assertEqual(
+            response.content,
+            'example=1, example_shared=1, standard=1, testclient=1'
+        )
+        # www.example.com will match exact and shared in addition to the 'no
+        # domain' cookie.
+        response = self.client.get('/test_client/show_cookies_view/',
+                                   HTTP_HOST='www.example.com')
+        self.assertEqual(
+            response.content,
+            'example=1, example_shared=1, standard=1'
+        )
+        # other.example.com will only match the shared cookie in addition to
+        # the 'no domain' cookie.
+        response = self.client.get('/test_client/show_cookies_view/',
+                                   HTTP_HOST='other.example.com')
+        self.assertEqual(
+            response.content,
+            'example_shared=1, standard=1'
+        )
+        # testclient as the  HTTP_HOST will only match the exact cookie in
+        # addition to the 'no domain' cookie.
+        response = self.client.get('/test_client/show_cookies_view/',
+                                   HTTP_HOST='testclient')
+        self.assertEqual(
+            response.content,
+            'standard=1, testclient=1'
+        )
+
+    def test_domain_overriding_cookies(self):
+        self.client.get('/test_client/set_cookie_view/',
+            {'cookie': 'example', 'domain': 'www.example.com', 'value': '3'})
+        self.client.get('/test_client/set_cookie_view/',
+            {'cookie': 'example', 'domain': '.example.com', 'value': '2'})
+        self.client.get('/test_client/set_cookie_view/',
+            {'cookie': 'example', 'value': '1'})
+
+        # With no host, the last entered cookie will be used.
+        response = self.client.get('/test_client/show_cookies_view/')
+        self.assertEqual(response.content, 'example=1')
+        # For a host not matching any domain specific cookies, the empty
+        # domain one will be used.
+        response = self.client.get('/test_client/show_cookies_view/',
+                                   HTTP_HOST='testclient')
+        self.assertEqual(response.content, 'example=1')
+        # alternate.example.com will use the cross domain cookie.
+        response = self.client.get('/test_client/show_cookies_view/',
+                                   HTTP_HOST='alternate.example.com')
+        self.assertEqual(response.content, 'example=2')
+        # www.example.com will use the specific domain cookie.
+        response = self.client.get('/test_client/show_cookies_view/',
+                                   HTTP_HOST='www.example.com')
+        self.assertEqual(response.content, 'example=3')
+
 class CSRFEnabledClientTests(TestCase):
     def setUp(self):
         # Enable the CSRF middleware for this test
