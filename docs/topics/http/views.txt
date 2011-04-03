@@ -200,3 +200,20 @@ By default, URLconfs contain the following line::
 That takes care of setting ``handler500`` in the current module. As you can see
 in ``django/conf/urls/defaults.py``, ``handler500`` is set to
 ``'django.views.defaults.server_error'`` by default.
+
+The 403 (HTTP Forbidden) view
+----------------------------
+
+In the same vein as the 404 and 500 views, Django has a view to handle 403
+Forbidden errors. If a view results in a 403 exception then Django will, by
+default, call the view ``django.views.defaults.permission_denied``.
+
+This view loads and renders the template ``403.html`` in your root template
+directory, or if this file does not exist, instead serves the text
+"403 Forbidden", as per RFC 2616 (the HTTP 1.1 Specification).
+
+It is possible to override ``django.views.defaults.permission_denied`` in the
+same way you can for the 404 and 500 views by specifying a ``handler403`` in
+your URLconf::
+
+    handler403 = 'mysite.views.my_custom_permission_denied_view'
