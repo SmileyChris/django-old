@@ -165,3 +165,4 @@ class PaginatorTests(TestCase):
         self.assertTrue('k' in page2)
         self.assertFalse('a' in page2)
         self.assertEqual(''.join(page2), 'fghijk')
+        self.assertEqual(''.join(reversed(page2)), 'kjihgf')
