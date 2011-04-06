@@ -7,7 +7,7 @@ databases). The abstraction barrier only works one way: this module has to know
 all about the internals of models in order to get the information it needs.
 """
 
-from django.utils.copycompat import deepcopy
+import copy
 from django.utils.tree import Node
 from django.utils.datastructures import SortedDict
 from django.utils.encoding import force_unicode
@@ -31,7 +31,6 @@ class RawQuery(object):
     """
 
     def __init__(self, sql, using, params=None):
-        self.validate_sql(sql)
         self.params = params or ()
         self.sql = sql
         self.using = using
@@ -61,11 +60,6 @@ class RawQuery(object):
         converter = connections[self.using].introspection.table_name_converter
         return [converter(column_meta[0])
                 for column_meta in self.cursor.description]
-
-    def validate_sql(self, sql):
-        if not sql.lower().strip().startswith('select'):
-            raise InvalidQuery('Raw queries are limited to SELECT queries. Use '
-                               'connection.cursor directly for other types of queries.')
 
     def __iter__(self):
         # Always execute a new query for a new iterator.
@@ -250,19 +244,19 @@ class Query(object):
         obj.dupe_avoidance = self.dupe_avoidance.copy()
         obj.select = self.select[:]
         obj.tables = self.tables[:]
-        obj.where = deepcopy(self.where, memo=memo)
+        obj.where = copy.deepcopy(self.where, memo=memo)
         obj.where_class = self.where_class
         if self.group_by is None:
             obj.group_by = None
         else:
             obj.group_by = self.group_by[:]
-        obj.having = deepcopy(self.having, memo=memo)
+        obj.having = copy.deepcopy(self.having, memo=memo)
         obj.order_by = self.order_by[:]
         obj.low_mark, obj.high_mark = self.low_mark, self.high_mark
         obj.distinct = self.distinct
         obj.select_related = self.select_related
         obj.related_select_cols = []
-        obj.aggregates = deepcopy(self.aggregates, memo=memo)
+        obj.aggregates = copy.deepcopy(self.aggregates, memo=memo)
         if self.aggregate_select_mask is None:
             obj.aggregate_select_mask = None
         else:
@@ -285,7 +279,7 @@ class Query(object):
             obj._extra_select_cache = self._extra_select_cache.copy()
         obj.extra_tables = self.extra_tables
         obj.extra_order_by = self.extra_order_by
-        obj.deferred_loading = deepcopy(self.deferred_loading, memo=memo)
+        obj.deferred_loading = copy.deepcopy(self.deferred_loading, memo=memo)
         if self.filter_is_sticky and self.used_aliases:
             obj.used_aliases = self.used_aliases.copy()
         else:
@@ -446,6 +440,8 @@ class Query(object):
             "Cannot combine a unique query with a non-unique query."
 
         self.remove_inherited_models()
+        l_tables = set([a for a in self.tables if self.alias_refcount[a]])
+        r_tables = set([a for a in rhs.tables if rhs.alias_refcount[a]])
         # Work out how to relabel the rhs aliases, if necessary.
         change_map = {}
         used = set()
@@ -463,18 +459,24 @@ class Query(object):
             first = False
 
         # So that we don't exclude valid results in an "or" query combination,
-        # the first join that is exclusive to the lhs (self) must be converted
+        # all joins exclusive to either the lhs or the rhs must be converted
         # to an outer join.
         if not conjunction:
-            for alias in self.tables[1:]:
-                if self.alias_refcount[alias] == 1:
-                    self.promote_alias(alias, True)
-                    break
+            # Update r_tables aliases.
+            for alias in change_map:
+                if alias in r_tables:
+                    r_tables.remove(alias)
+                    r_tables.add(change_map[alias])
+            # Find aliases that are exclusive to rhs or lhs.
+            # These are promoted to outer joins.
+            outer_aliases = (l_tables | r_tables) - (l_tables & r_tables)
+            for alias in outer_aliases:
+                self.promote_alias(alias, True)
 
         # Now relabel a copy of the rhs where-clause and add it to the current
         # one.
         if rhs.where:
-            w = deepcopy(rhs.where)
+            w = copy.deepcopy(rhs.where)
             w.relabel_aliases(change_map)
             if not self.where:
                 # Since 'self' matches everything, add an explicit "include
@@ -495,7 +497,7 @@ class Query(object):
             if isinstance(col, (list, tuple)):
                 self.select.append((change_map.get(col[0], col[0]), col[1]))
             else:
-                item = deepcopy(col)
+                item = copy.deepcopy(col)
                 item.relabel_aliases(change_map)
                 self.select.append(item)
         self.select_fields = rhs.select_fields[:]

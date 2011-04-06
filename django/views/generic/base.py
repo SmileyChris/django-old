@@ -1,8 +1,8 @@
+from functools import update_wrapper
 from django import http
 from django.core.exceptions import ImproperlyConfigured
 from django.template import RequestContext, loader
 from django.template.response import TemplateResponse
-from django.utils.functional import update_wrapper
 from django.utils.log import getLogger
 from django.utils.decorators import classonlymethod
 
@@ -102,7 +102,9 @@ class TemplateResponseMixin(object):
         a list. May not be called if render_to_response is overridden.
         """
         if self.template_name is None:
-            return []
+            raise ImproperlyConfigured(
+                "TemplateResponseMixin requires either a definition of "
+                "'template_name' or an implementation of 'get_template_names()'")
         else:
             return [self.template_name]
 

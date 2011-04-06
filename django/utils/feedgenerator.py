@@ -27,13 +27,15 @@ import datetime
 import urlparse
 from django.utils.xmlutils import SimplerXMLGenerator
 from django.utils.encoding import force_unicode, iri_to_uri
+from django.utils import datetime_safe
 
 def rfc2822_date(date):
     # We can't use strftime() because it produces locale-dependant results, so
     # we have to map english month and day names manually
     months = ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',)
     days = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')
-
+    # Support datetime objects older than 1900
+    date = datetime_safe.new_datetime(date)
     # We do this ourselves to be timezone aware, email.Utils is not tz aware.
     dow = days[date.weekday()]
     month = months[date.month - 1]
@@ -47,6 +49,8 @@ def rfc2822_date(date):
         return time_str + '-0000'
 
 def rfc3339_date(date):
+    # Support datetime objects older than 1900
+    date = datetime_safe.new_datetime(date)
     if date.tzinfo:
         time_str = date.strftime('%Y-%m-%dT%H:%M:%S')
         offset = date.tzinfo.utcoffset(date)
@@ -62,17 +66,11 @@ def get_tag_uri(url, date):
 
     See http://diveintomark.org/archives/2004/05/28/howto-atom-id
     """
-    url_split = urlparse.urlparse(url)
-
-    # Python 2.4 didn't have named attributes on split results or the hostname.
-    hostname = getattr(url_split, 'hostname', url_split[1].split(':')[0])
-    path = url_split[2]
-    fragment = url_split[5]
-
+    bits = urlparse.urlparse(url)
     d = ''
     if date is not None:
-        d = ',%s' % date.strftime('%Y-%m-%d')
-    return u'tag:%s%s:%s/%s' % (hostname, d, path, fragment)
+        d = ',%s' % datetime_safe.new_datetime(date).strftime('%Y-%m-%d')
+    return u'tag:%s%s:%s/%s' % (bits.hostname, d, bits.path, bits.fragment)
 
 class SyndicationFeed(object):
     "Base class for all syndication feeds. Subclasses should provide write()"
@@ -287,7 +285,7 @@ class Rss201rev2Feed(RssFeed):
 
 class Atom1Feed(SyndicationFeed):
     # Spec: http://atompub.org/2005/07/11/draft-ietf-atompub-format-10.html
-    mime_type = 'application/atom+xml'
+    mime_type = 'application/atom+xml; charset=utf8'
     ns = u"http://www.w3.org/2005/Atom"
 
     def write(self, outfile, encoding):

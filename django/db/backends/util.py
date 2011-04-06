@@ -1,16 +1,32 @@
 import datetime
 import decimal
+import hashlib
 from time import time
 
-from django.utils.hashcompat import md5_constructor
 from django.utils.log import getLogger
+
 
 logger = getLogger('django.db.backends')
 
-class CursorDebugWrapper(object):
+
+class CursorWrapper(object):
     def __init__(self, cursor, db):
         self.cursor = cursor
-        self.db = db # Instance of a BaseDatabaseWrapper subclass
+        self.db = db
+
+    def __getattr__(self, attr):
+        if self.db.is_managed():
+            self.db.set_dirty()
+        if attr in self.__dict__:
+            return self.__dict__[attr]
+        else:
+            return getattr(self.cursor, attr)
+
+    def __iter__(self):
+        return iter(self.cursor)
+
+
+class CursorDebugWrapper(CursorWrapper):
 
     def execute(self, sql, params=()):
         start = time()
@@ -43,14 +59,6 @@ class CursorDebugWrapper(object):
                 extra={'duration':duration, 'sql':sql, 'params':param_list}
             )
 
-    def __getattr__(self, attr):
-        if attr in self.__dict__:
-            return self.__dict__[attr]
-        else:
-            return getattr(self.cursor, attr)
-
-    def __iter__(self):
-        return iter(self.cursor)
 
 ###############################################
 # Converters from database (string) to Python #
@@ -122,9 +130,8 @@ def truncate_name(name, length=None, hash_len=4):
     if length is None or len(name) <= length:
         return name
 
-    hash = md5_constructor(name).hexdigest()[:hash_len]
-
-    return '%s%s' % (name[:length-hash_len], hash)
+    hsh = hashlib.md5(name).hexdigest()[:hash_len]
+    return '%s%s' % (name[:length-hash_len], hsh)
 
 def format_number(value, max_digits, decimal_places):
     """

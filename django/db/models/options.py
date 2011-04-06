@@ -11,11 +11,6 @@ from django.utils.translation import activate, deactivate_all, get_language, str
 from django.utils.encoding import force_unicode, smart_str
 from django.utils.datastructures import SortedDict
 
-try:
-    all
-except NameError:
-    from django.utils.itercompat import all
-
 # Calculate the verbose_name by converting from InitialCaps to "lowercase with spaces".
 get_verbose_name = lambda class_name: re.sub('(((?<=[a-z])[A-Z])|([A-Z](?![A-Z]|$)))', ' \\1', class_name).lower().strip()
 
@@ -123,6 +118,12 @@ class Options(object):
                 # Promote the first parent link in lieu of adding yet another
                 # field.
                 field = self.parents.value_for_index(0)
+                # Look for a local field with the same name as the
+                # first parent link. If a local field has already been
+                # created, use it instead of promoting the parent
+                already_created = [fld for fld in self.local_fields if fld.name == field.name]
+                if already_created:
+                    field = already_created[0]
                 field.primary_key = True
                 self.setup_pk(field)
             else:

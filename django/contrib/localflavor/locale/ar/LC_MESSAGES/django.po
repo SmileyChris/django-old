@@ -1,23 +1,19 @@
-# translation of django.po to Arabic
-# This file is distributed under the same license as the django package.
+# This file is distributed under the same license as the Django package.
 #
-# Ossama M. Khayat <okhayat@yahoo.com>, 2009, 2010.
 msgid ""
 msgstr ""
-"Project-Id-Version: django\n"
+"Project-Id-Version: Django\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2010-12-29 00:27+0100\n"
-"PO-Revision-Date: 2010-05-12 11:20+0300\n"
-"Last-Translator: Ossama M. Khayat <okhayat@yahoo.com>\n"
-"Language-Team: Arabic <support@arabeyes.org>\n"
+"POT-Creation-Date: 2011-03-20 21:08+0100\n"
+"PO-Revision-Date: 2011-03-17 18:13+0000\n"
+"Last-Translator: okhayat <okhayat@gmail.com>\n"
+"Language-Team: Arabic <None>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Lokalize 1.0\n"
-"Plural-Forms: nplurals=4; plural=(n == 1? 0 : (n == 2? 1 : (n <= 10? 2 : "
-"3)))\n"
-"\n"
-"\n"
+"Language: ar\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 "
+"&& n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5\n"
 
 #: ar/forms.py:28
 msgid "Enter a postal code in the format NNNN or ANNNNAAA."
@@ -61,7 +57,7 @@ msgstr "سالزبورغ"
 
 #: at/at_states.py:10
 msgid "Styria"
-msgstr ""
+msgstr "ستيريا"
 
 #: at/at_states.py:11
 msgid "Tyrol"
@@ -69,7 +65,7 @@ msgstr "تايرُل"
 
 #: at/at_states.py:12
 msgid "Vorarlberg"
-msgstr ""
+msgstr "فورارلبيرغ"
 
 #: at/at_states.py:13
 msgid "Vienna"
@@ -92,9 +88,8 @@ msgid "Antwerp"
 msgstr ""
 
 #: be/be_provinces.py:6
-#, fuzzy
 msgid "Brussels"
-msgstr "المستخدمين"
+msgstr "بروكسل"
 
 #: be/be_provinces.py:7
 msgid "East Flanders"
@@ -105,9 +100,8 @@ msgid "Flemish Brabant"
 msgstr ""
 
 #: be/be_provinces.py:9
-#, fuzzy
 msgid "Hainaut"
-msgstr "دقيقة"
+msgstr ""
 
 #: be/be_provinces.py:10
 msgid "Liege"
@@ -119,21 +113,19 @@ msgstr ""
 
 #: be/be_provinces.py:12
 msgid "Luxembourg"
-msgstr ""
+msgstr "لوكسومبورج"
 
 #: be/be_provinces.py:13
-#, fuzzy
 msgid "Namur"
-msgstr "الاسم"
+msgstr ""
 
 #: be/be_provinces.py:14
 msgid "Walloon Brabant"
 msgstr ""
 
 #: be/be_provinces.py:15
-#, fuzzy
 msgid "West Flanders"
-msgstr "الجزر الغربية"
+msgstr ""
 
 #: be/be_regions.py:5
 msgid "Brussels Capital Region"
@@ -144,14 +136,12 @@ msgid "Flemish Region"
 msgstr ""
 
 #: be/be_regions.py:7
-#, fuzzy
 msgid "Wallonia"
-msgstr "كتالونيا"
+msgstr ""
 
 #: be/forms.py:23
-#, fuzzy
 msgid "Enter a valid postal code in the range and format 1XXX - 9XXX."
-msgstr "أدخل رمزاً بريدياً صحيحاً بالمدى والنسق 01XXX - 52XXX."
+msgstr "أدخل الرمز البريدي بالتسلسل الصحيح ما بين 1XXX - 9XXX."
 
 #: be/forms.py:46
 msgid ""
@@ -159,6 +149,9 @@ msgid ""
 "04xx xx xx xx, 0x/xxx.xx.xx, 0xx/xx.xx.xx, 04xx/xx.xx.xx, 0x.xxx.xx.xx, 0xx."
 "xx.xx.xx, 04xx.xx.xx.xx, 0xxxxxxxx or 04xxxxxxxx."
 msgstr ""
+"أدخل رقم هاتف صحيح بأي من الأنساق التالية 0x xxx xx xx، 0xx xx xx xx، 04xx "
+"xx xx xx، 0x/xxx.xx.xx، 0xx/xx.xx.xx، 04xx/xx.xx.xx، 0x.xxx.xx.xx، 0xx.xx.xx."
+"xx، 04xx.xx.xx.xx، 0xxxxxxxx أو 04xxxxxxxx."
 
 #: br/forms.py:17
 msgid "Enter a zip code in the format XXXXX-XXX."
@@ -474,7 +467,7 @@ msgstr ""
 
 #: es/es_provinces.py:5
 msgid "Arava"
-msgstr ""
+msgstr "أرافا"
 
 #: es/es_provinces.py:6
 msgid "Albacete"
@@ -486,15 +479,15 @@ msgstr ""
 
 #: es/es_provinces.py:8
 msgid "Almeria"
-msgstr ""
+msgstr "ألميريا"
 
 #: es/es_provinces.py:9
 msgid "Avila"
-msgstr ""
+msgstr "أفيلا"
 
 #: es/es_provinces.py:10
 msgid "Badajoz"
-msgstr ""
+msgstr "باداجوز"
 
 #: es/es_provinces.py:11
 msgid "Illes Balears"
@@ -506,7 +499,7 @@ msgstr "برشلونة"
 
 #: es/es_provinces.py:13
 msgid "Burgos"
-msgstr ""
+msgstr "بورجوس"
 
 #: es/es_provinces.py:14
 msgid "Caceres"
@@ -518,7 +511,7 @@ msgstr ""
 
 #: es/es_provinces.py:16
 msgid "Castello"
-msgstr ""
+msgstr "كاستلّو"
 
 #: es/es_provinces.py:17
 msgid "Ciudad Real"
@@ -682,7 +675,7 @@ msgstr ""
 
 #: es/es_regions.py:5
 msgid "Andalusia"
-msgstr ""
+msgstr "الأندلس"
 
 #: es/es_regions.py:6
 msgid "Aragon"
@@ -1192,14 +1185,12 @@ msgid "Wicklow"
 msgstr ""
 
 #: il/forms.py:31
-#, fuzzy
 msgid "Enter a postal code in the format XXXXX"
-msgstr "أدخل رمزاً بريدياً بالنسق XX-XXX."
+msgstr "اكتب الرمز البريدي بالنسق XXXXX"
 
 #: il/forms.py:50
-#, fuzzy
 msgid "Enter a valid ID number."
-msgstr "أدخل رقم IC صحيح."
+msgstr "أدخل رقم هوية صحيح."
 
 #: in_/forms.py:15
 msgid "Enter a zip code in the format XXXXXXX."
@@ -2045,11 +2036,11 @@ msgstr ""
 
 #: sk/sk_districts.py:60
 msgid "Rimavska Sobota"
-msgstr ""
+msgstr "ريمافسكا سوبوتا"
 
 #: sk/sk_districts.py:61
 msgid "Roznava"
-msgstr ""
+msgstr "روتزنافا"
 
 #: sk/sk_districts.py:62
 msgid "Ruzomberok"
@@ -2184,24 +2175,20 @@ msgid "Zilina region"
 msgstr ""
 
 #: tr/forms.py:16
-#, fuzzy
 msgid "Enter a postal code in the format XXXXX."
-msgstr "أدخل رمزاً بريدياً بالنسق XX-XXX."
+msgstr "أدخل الرمز البريدي بالنسق XXXXX."
 
 #: tr/forms.py:37
-#, fuzzy
 msgid "Phone numbers must be in 0XXX XXX XXXX format."
-msgstr "أرقام الهاتف يجب أن تكون بالنسق 0X XX XX XX XX."
+msgstr "أرقام الهواتف يجب أن تكون بالنسق 0XXX XXX XXXX."
 
 #: tr/forms.py:64
-#, fuzzy
 msgid "Enter a valid Turkish Identification number."
-msgstr "أدخل رقم تنظيم سويدي صحيح."
+msgstr "أدخل رقم هوية تركية صحيح."
 
 #: tr/forms.py:65
-#, fuzzy
 msgid "Turkish Identification number must be 11 digits."
-msgstr "يتكون رقم الهوية الوطني من 11 رقماً."
+msgstr "رقم الهوية التركي يجب أن يتكون من 11 رقماً."
 
 #: uk/forms.py:21
 msgid "Enter a valid postcode."
@@ -2229,11 +2216,11 @@ msgstr ""
 
 #: uk/uk_regions.py:17
 msgid "Derbyshire"
-msgstr ""
+msgstr "ديربي شاير"
 
 #: uk/uk_regions.py:18
 msgid "Devon"
-msgstr ""
+msgstr "دِفون"
 
 #: uk/uk_regions.py:19
 msgid "Dorset"
@@ -2257,15 +2244,15 @@ msgstr ""
 
 #: uk/uk_regions.py:24
 msgid "Greater London"
-msgstr ""
+msgstr "لندن العظمى"
 
 #: uk/uk_regions.py:25
 msgid "Greater Manchester"
-msgstr ""
+msgstr "مانشستر العظمى"
 
 #: uk/uk_regions.py:26
 msgid "Hampshire"
-msgstr ""
+msgstr "هامشاير"
 
 #: uk/uk_regions.py:27
 msgid "Hertfordshire"
@@ -2273,7 +2260,7 @@ msgstr ""
 
 #: uk/uk_regions.py:28
 msgid "Kent"
-msgstr ""
+msgstr "كِنْت"
 
 #: uk/uk_regions.py:29
 msgid "Lancashire"
@@ -2297,7 +2284,7 @@ msgstr ""
 
 #: uk/uk_regions.py:34
 msgid "North Yorkshire"
-msgstr ""
+msgstr "شمال يورك شاير"
 
 #: uk/uk_regions.py:35
 msgid "Northamptonshire"
@@ -2445,7 +2432,7 @@ msgstr ""
 
 #: uk/uk_regions.py:80
 msgid "Highland"
-msgstr ""
+msgstr "هاي لاند"
 
 #: uk/uk_regions.py:81
 msgid "Lothian"
@@ -2508,9 +2495,8 @@ msgid "U.S. state (two uppercase letters)"
 msgstr "ولاية أمريكية (حرفان كبيران)"
 
 #: us/models.py:18
-#, fuzzy
 msgid "U.S. postal code (two uppercase letters)"
-msgstr "ولاية أمريكية (حرفان كبيران)"
+msgstr "رمز بريدي أميركي (حرفان لاتينيان كبيران)"
 
 #: us/models.py:27
 msgid "Phone number"

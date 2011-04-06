@@ -3,7 +3,6 @@ import sys
 
 from django.dispatch import Signal
 from django.utils import unittest
-import django.utils.copycompat as copy
 
 if sys.platform.startswith('java'):
     def garbage_collect():
@@ -99,7 +98,7 @@ class DispatcherTests(unittest.TestCase):
         a_signal.connect(fails)
         result = a_signal.send_robust(sender=self, val="test")
         err = result[0][1]
-        self.assert_(isinstance(err, ValueError))
+        self.assertTrue(isinstance(err, ValueError))
         self.assertEqual(err.args, ('this',))
         a_signal.disconnect(fails)
         self._testIsClean(a_signal)

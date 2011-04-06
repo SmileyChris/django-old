@@ -1,8 +1,4 @@
-from sys import version_info
-try:
-    from functools import wraps
-except ImportError:
-    from django.utils.functional import wraps  # Python 2.4 fallback.
+from functools import wraps
 
 from django.contrib.auth.decorators import login_required, permission_required, user_passes_test
 from django.contrib.admin.views.decorators import staff_member_required
@@ -56,9 +52,9 @@ class DecoratorsTest(TestCase):
         Tests that django decorators set certain attributes of the wrapped
         function.
         """
-        self.assertEquals(fully_decorated.__name__, 'fully_decorated')
-        self.assertEquals(fully_decorated.__doc__, 'Expected __doc__')
-        self.assertEquals(fully_decorated.__dict__['anything'], 'Expected __dict__')
+        self.assertEqual(fully_decorated.__name__, 'fully_decorated')
+        self.assertEqual(fully_decorated.__doc__, 'Expected __doc__')
+        self.assertEqual(fully_decorated.__dict__['anything'], 'Expected __dict__')
 
     def test_user_passes_test_composition(self):
         """

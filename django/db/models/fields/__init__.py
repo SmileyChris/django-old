@@ -1,3 +1,4 @@
+import copy
 import datetime
 import decimal
 import re
@@ -5,10 +6,7 @@ import time
 import math
 from itertools import tee
 
-import django.utils.copycompat as copy
-
 from django.db import connection
-from django.db.models.fields.subclassing import LegacyConnection
 from django.db.models.query_utils import QueryWrapper
 from django.conf import settings
 from django import forms
@@ -47,7 +45,6 @@ class FieldDoesNotExist(Exception):
 
 class Field(object):
     """Base class for all field types"""
-    __metaclass__ = LegacyConnection
 
     # Designates whether empty strings fundamentally are allowed at the
     # database level.
@@ -206,8 +203,8 @@ class Field(object):
         #
         # A Field class can implement the get_internal_type() method to specify
         # which *preexisting* Django Field class it's most similar to -- i.e.,
-        # an XMLField is represented by a TEXT column type, which is the same
-        # as the TextField Django field type, which means XMLField's
+        # a custom field might be represented by a TEXT column type, which is the
+        # same as the TextField Django field type, which means the custom field's
         # get_internal_type() returns 'TextField'.
         #
         # But the limitation of the get_internal_type() / data_types approach
@@ -1136,6 +1133,9 @@ class XMLField(TextField):
     description = _("XML text")
 
     def __init__(self, verbose_name=None, name=None, schema_path=None, **kwargs):
+        import warnings
+        warnings.warn("Use of XMLField has been deprecated; please use TextField instead.",
+                      DeprecationWarning)
         self.schema_path = schema_path
         Field.__init__(self, verbose_name, name, **kwargs)
 
