@@ -494,21 +494,44 @@ class Client(RequestFactory):
             response = self._handle_redirects(response, **extra)
         return response
 
-    def login(self, **credentials):
+    def login(self, *args, **credentials):
         """
-        Sets the Factory to appear as if it has successfully logged into a site.
+        Sets the Factory to appear as if it has successfully logged into a
+        site.
 
         Returns True if login is possible; False if the provided credentials
         are incorrect, or the user is inactive, or if the sessions framework is
         not available.
+
+        If the login requires the request used to log in to be passed through
+        the middleware layers, pass an empty dictionary as a positional
+        argument::
+
+            client.login({}, username='joe', password='password')
+
+        This dictionary can contain request metadata required for the
+        authentication request to succeed, for example::
+
+            request_data = {'HTTP_HOST': 'localhost'}
+            client.login(request_data, username='joe', password='password')
         """
+        if args and (len(args) != 1 or not isinstance(args[0], dict)):
+            raise AttributeError('The login method only accepts a single '
+                'positional argument which should be a dictionary.')
         user = authenticate(**credentials)
         if user and user.is_active \
                 and 'django.contrib.sessions' in settings.INSTALLED_APPS:
             engine = import_module(settings.SESSION_ENGINE)
 
             # Create a fake request to store login details.
-            request = HttpRequest()
+            if args:
+                # If any request data is provided (even an empty dictionary),
+                # get a proper request which has passed through the middleware
+                # layers. The `/login/` URL is simply a dummy location for the
+                # request.
+                request = RequestFactory(**args[0]).post("/login/")
+            else:
+                request = HttpRequest()
             if self.session:
                 request.session = self.session
             else:
