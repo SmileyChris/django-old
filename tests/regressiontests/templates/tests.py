@@ -205,9 +205,9 @@ class Templates(unittest.TestCase):
         if os.path.normcase('/TEST') == os.path.normpath('/test'):
             template_dirs = ['/dir1', '/DIR2']
             test_template_sources('index.html', template_dirs,
-                                  ['/dir1/index.html', '/dir2/index.html'])
+                                  ['/dir1/index.html', '/DIR2/index.html'])
             test_template_sources('/DIR1/index.HTML', template_dirs,
-                                  ['/dir1/index.html'])
+                                  ['/DIR1/index.html'])
 
     def test_loader_debug_origin(self):
         # Turn TEMPLATE_DEBUG on, so that the origin file name will be kept with
