@@ -60,6 +60,13 @@ A new helper function,
 ``template.Library`` to ease the creation of template tags that store some
 data in a specified context variable.
 
+``truncatechars`` template filter
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Added a filter which truncates a string to be no longer than the specified
+number of characters. Truncated strings end with a translatable ellipsis
+sequence ("...").
+
 .. _backwards-incompatible-changes-1.4:
 
 Backwards incompatible changes in 1.4

@@ -1,8 +1,46 @@
+# -*- coding: utf-8 -*-
 import unittest
 
 from django.utils import text
 
 class TestUtilsText(unittest.TestCase):
+
+    def test_truncate_chars(self):
+        self.assertEqual(u'The quick brown fox jumped over the lazy dog.',
+            text.truncate_chars(u'The quick brown fox jumped over the lazy dog.', 100))
+        self.assertEqual(u'The quick brown fox ...',
+            text.truncate_chars('The quick brown fox jumped over the lazy dog.', 23))
+        self.assertEqual(u'The quick brown fo.....',
+            text.truncate_chars('The quick brown fox jumped over the lazy dog.', 23, '.....'))
+        
+        # Ensure that we normalize our unicode data first
+        nfc = u'o\xfco\xfco\xfco\xfc'
+        nfd = u'ou\u0308ou\u0308ou\u0308ou\u0308'
+        self.assertEqual(u'oüoüoüoü', text.truncate_chars(nfc, 8))
+        self.assertEqual(u'oüoüoüoü', text.truncate_chars(nfd, 8))
+        self.assertEqual(u'oü...', text.truncate_chars(nfc, 5))
+        self.assertEqual(u'oü...', text.truncate_chars(nfd, 5))
+        
+        # Ensure the final length is calculated correctly when there are
+        # combining characters with no precomposed form, and that combining
+        # characters are not split up.
+        self.assertEqual(u'-B\u030A...',
+            text.truncate_chars(u'-B\u030AB\u030A----8', 5))
+        self.assertEqual(u'-B\u030AB\u030A-...',
+            text.truncate_chars(u'-B\u030AB\u030A----8', 7))
+        self.assertEqual(u'-B\u030AB\u030A----8',
+            text.truncate_chars(u'-B\u030AB\u030A----8', 8))
+
+        # Ensure the length of the end text is correctly calculated when it
+        # contains combining characters with no precomposed form.
+        self.assertEqual(u'---B\u030A',
+            text.truncate_chars(u'-----', 4, end_text=u'B\u030A'))
+        self.assertEqual(u'-----',
+            text.truncate_chars(u'-----', 5, end_text=u'B\u030A'))
+
+        # Make a best effort to shorten to the desired length, but requesting
+        # a length shorter than the ellipsis shouldn't break
+        self.assertEqual(u'...', text.truncate_chars(u'asdf', 1))
 
     def test_truncate_words(self):
         self.assertEqual(u'The quick brown fox jumped over the lazy dog.',

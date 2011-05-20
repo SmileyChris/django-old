@@ -239,6 +239,21 @@ def title(value):
 title.is_safe = True
 title = stringfilter(title)
 
+def truncatechars(value, arg):
+    """
+    Truncates a string after a certain number of characters.
+    
+    Argument: Number of characters to truncate after.
+    """
+    from django.utils.text import truncate_chars
+    try:
+        length = int(arg)
+    except ValueError: # Invalid literal for int().
+        return value # Fail silently.
+    return truncate_chars(value, length)
+truncatechars.is_safe = True
+truncatechars = stringfilter(truncatechars)
+
 def truncatewords(value, arg):
     """
     Truncates a string after a certain number of words.

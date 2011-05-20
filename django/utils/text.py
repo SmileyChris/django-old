@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from django.utils.encoding import force_unicode
 from django.utils.functional import allow_lazy
 from django.utils.translation import ugettext_lazy, ugettext as _
@@ -35,6 +36,42 @@ def wrap(text, width):
             yield word
     return u''.join(_generator())
 wrap = allow_lazy(wrap, unicode)
+
+def truncate_chars(s, num, end_text=ugettext_lazy('...')):
+    """Truncates a string to be no longer than the specified number of
+    characters. Takes an optional argument of what should be used to notify
+    that the string has been truncated, defaulting to a translatable string of
+    an ellipsis (...)
+    """
+    s = unicodedata.normalize('NFC', force_unicode(s))
+    length = int(num)
+    end_text = unicodedata.normalize('NFC', force_unicode(end_text))
+
+    # Calculate the length to truncate to (max length - end_text length)
+    truncate_len = length
+    for char in end_text:
+        if not unicodedata.combining(char):
+            truncate_len -= 1
+            if truncate_len == 0:
+                break
+
+    s_len = 0
+    end_index = None
+    for i, char in enumerate(s):
+        if unicodedata.combining(char):
+            # Don't consider combining characters as adding to the string
+            # length
+            continue
+        s_len += 1
+        if end_index is None and s_len > truncate_len:
+            end_index = i
+        if s_len > length:
+            # Return the truncated string
+            return u'%s%s' % (s[:end_index or 0], end_text)
+
+    # Return the original string since no truncation was necessary
+    return s
+truncate_chars = allow_lazy(truncate_chars, unicode)
 
 def truncate_words(s, num, end_text='...'):
     """Truncates a string after a certain number of words. Takes an optional
