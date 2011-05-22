@@ -8,6 +8,7 @@ from functools import wraps
 from django.template.base import Variable, Library
 from django.conf import settings
 from django.utils import formats
+from django.utils import text as text_utils
 from django.utils.encoding import force_unicode, iri_to_uri
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe, SafeData
@@ -245,12 +246,11 @@ def truncatechars(value, arg):
     
     Argument: Number of characters to truncate after.
     """
-    from django.utils.text import truncate_chars
     try:
         length = int(arg)
     except ValueError: # Invalid literal for int().
         return value # Fail silently.
-    return truncate_chars(value, length)
+    return text_utils.Truncator(value).chars(value, length)
 truncatechars.is_safe = True
 truncatechars = stringfilter(truncatechars)
 
@@ -262,12 +262,11 @@ def truncatewords(value, arg):
 
     Newlines within the string are removed.
     """
-    from django.utils.text import truncate_words
     try:
         length = int(arg)
     except ValueError: # Invalid literal for int().
         return value # Fail silently.
-    return truncate_words(value, length)
+    return text_utils.Truncator(value).words(length, truncate=' ...')
 truncatewords.is_safe = True
 truncatewords = stringfilter(truncatewords)
 
@@ -279,12 +278,12 @@ def truncatewords_html(value, arg):
 
     Newlines in the HTML are preserved.
     """
-    from django.utils.text import truncate_html_words
     try:
         length = int(arg)
     except ValueError: # invalid literal for int()
         return value # Fail silently.
-    return truncate_html_words(value, length)
+    return text_utils.Truncator(value).words(length, html=True,
+                                             truncate=' ...')
 truncatewords_html.is_safe = True
 truncatewords_html = stringfilter(truncatewords_html)
 
