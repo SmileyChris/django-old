@@ -2,7 +2,7 @@ import re
 import unicodedata
 from django.utils.encoding import force_unicode
 from django.utils.functional import allow_lazy, LazyObject
-from django.utils.translation import ugettext_lazy, ugettext as _
+from django.utils.translation import ugettext_lazy, ugettext as _, pgettext
 from htmlentitydefs import name2codepoint
 
 # Capitalizes the first letter of a string.
@@ -51,7 +51,8 @@ class Truncator(LazyObject):
 
     def add_truncation_text(self, text, truncate=None):
         if truncate is None:
-            truncate = _('%(truncated_text)s...')
+            truncate = pgettext('String to return when truncating text',
+                '%(truncated_text)s...', )
         truncate = force_unicode(truncate)
         if '%(truncated_text)s' in truncate:
             return truncate % {'truncated_text': text}
