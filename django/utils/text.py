@@ -52,7 +52,7 @@ class Truncator(LazyObject):
     def add_truncation_text(self, text, truncate=None):
         if truncate is None:
             truncate = pgettext('String to return when truncating text',
-                '%(truncated_text)s...', )
+                u'%(truncated_text)s...', )
         truncate = force_unicode(truncate)
         if '%(truncated_text)s' in truncate:
             return truncate % {'truncated_text': text}
@@ -101,6 +101,7 @@ class Truncator(LazyObject):
 
         # Return the original string since no truncation was necessary
         return text
+    chars = allow_lazy(chars)
 
     def words(self, num, truncate=None, html=False):
         """
@@ -112,6 +113,7 @@ class Truncator(LazyObject):
         if html:
             return self._html_words(length, truncate)
         return self._text_words(length, truncate)
+    words = allow_lazy(words)
 
     def _text_words(self, length, truncate):
         """
