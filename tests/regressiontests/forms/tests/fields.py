@@ -131,6 +131,23 @@ class FieldsTests(TestCase):
         self.assertEqual(f.max_length, None)
         self.assertEqual(f.min_length, 10)
 
+    def test_charfield_validator_attributes(self):
+        f = CharField(min_length=2, max_length=4)
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value has at least 2 characters (it has 1).']", f.clean, '1')
+        self.assertEqual(u'123', f.clean('123'))
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value has at most 4 characters (it has 5).']", f.clean, '12345')
+
+        f.min_length = 6
+        f.max_length = 8
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value has at least 6 characters (it has 3).']", f.clean, '123')
+        self.assertEqual(u'1234567', f.clean('1234567'))
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value has at most 8 characters (it has 9).']", f.clean, '123456789')
+
+        f.min_length = None
+        f.max_length = None
+        self.assertEqual(u'1', f.clean('1'))
+        self.assertEqual(u'123456789', f.clean('123456789'))
+
     # IntegerField ################################################################
 
     def test_integerfield_1(self):
@@ -202,6 +219,23 @@ class FieldsTests(TestCase):
         self.assertEqual(f.max_value, 20)
         self.assertEqual(f.min_value, 10)
 
+    def test_integerfield_validator_attributes(self):
+        f = IntegerField(min_value=2, max_value=4)
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value is greater than or equal to 2.']", f.clean, 1)
+        self.assertEqual(3, f.clean(3))
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value is less than or equal to 4.']", f.clean, 5)
+
+        f.min_value = 6
+        f.max_value = 8
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value is greater than or equal to 6.']", f.clean, 3)
+        self.assertEqual(7, f.clean(7))
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value is less than or equal to 8.']", f.clean, 9)
+
+        f.min_value = None
+        f.max_value = None
+        self.assertEqual(1, f.clean(1))
+        self.assertEqual(9, f.clean(9))
+
     # FloatField ##################################################################
 
     def test_floatfield_1(self):
@@ -238,6 +272,23 @@ class FieldsTests(TestCase):
         self.assertEqual(0.5, f.clean('0.5'))
         self.assertEqual(f.max_value, 1.5)
         self.assertEqual(f.min_value, 0.5)
+
+    def test_floatfield_validator_attributes(self):
+        f = FloatField(min_value=1.5, max_value=2.5)
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value is greater than or equal to 1.5.']", f.clean, 1)
+        self.assertEqual(2, f.clean(2))
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value is less than or equal to 2.5.']", f.clean, 3)
+
+        f.min_value = 4
+        f.max_value = 5
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value is greater than or equal to 4.']", f.clean, 3.5)
+        self.assertEqual(4.5, f.clean(4.5))
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value is less than or equal to 5.']", f.clean, 6.6)
+
+        f.min_value = None
+        f.max_value = None
+        self.assertEqual(0.5, f.clean(0.5))
+        self.assertEqual(5.5, f.clean(5.5))
 
     # DecimalField ################################################################
 
@@ -318,6 +369,23 @@ class FieldsTests(TestCase):
         f = DecimalField(max_digits=2, decimal_places=2)
         self.assertEqual(f.clean('.01'), Decimal(".01"))
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure that there are no more than 0 digits before the decimal point.']", f.clean, '1.1')
+
+    def test_decimalfield_validator_attributes(self):
+        f = DecimalField(min_value=Decimal('1.5'), max_value=Decimal('2.5'))
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value is greater than or equal to 1.5.']", f.clean, 1)
+        self.assertEqual(Decimal('2'), f.clean(2))
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value is less than or equal to 2.5.']", f.clean, 3)
+
+        f.min_value = Decimal('4')
+        f.max_value = Decimal('5')
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value is greater than or equal to 4.']", f.clean, 3.5)
+        self.assertEqual(Decimal('4.5'), f.clean(4.5))
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value is less than or equal to 5.']", f.clean, 6.6)
+
+        f.min_value = None
+        f.max_value = None
+        self.assertEqual(Decimal('0.5'), f.clean(0.5))
+        self.assertEqual(Decimal('5.5'), f.clean(5.5))
 
     # DateField ###################################################################
 
@@ -487,6 +555,23 @@ class FieldsTests(TestCase):
         self.assertEqual(u'1234567890', f.clean('1234567890'))
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Ensure this value has at most 10 characters (it has 11).']", f.clean, '12345678901')
         self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid value.']", f.clean, '12345a')
+
+    def test_regexfield_validator_attributes(self):
+        f = RegexField('^\d+$')
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid value.']", f.clean, 'abc')
+        self.assertEqual(u'1234', f.clean('1234'))
+
+        f.regex = '^[a-z]+$'
+        self.assertEqual(u'abc', f.clean('abc'))
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid value.']", f.clean, '1234')
+
+        f.regex = re.compile('^[^\w]+$')
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid value.']", f.clean, 'abc')
+        self.assertRaisesErrorWithMessage(ValidationError, "[u'Enter a valid value.']", f.clean, '1234')
+        self.assertEqual(u'--', f.clean('--'))
+
+        f.regex = None
+        self.assertEqual(u'1-b-2', f.clean('1-b-2'))
 
     # EmailField ##################################################################
 
