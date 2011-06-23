@@ -40,6 +40,64 @@ __all__ = (
 )
 
 
+class ValidatorAttribute(object):
+    """
+    A descriptor used to dynamically update a field's validators based on a
+    single value.
+
+    .. attribute:: create_func
+
+        A function used to create a validator. It should take two arguments,
+        the object instance and a value.
+
+        When a value is set to this descriptor, this function is executed and
+        the validator it returns (if any) is added to the field's
+        :attr:`~Field.validators` list.
+
+        If this descriptor had previously set a validator, it will be removed
+        from the field's ``validators`` list.
+
+    .. attribute:: clean_func
+
+        An optional function which can modify the incoming value before setting
+        it. The function should take the same two arguments as
+        :attr:`create_func`.
+    """
+
+    def __init__(self, create_func, clean_func=None):
+        """
+        :param create_func: A function that creates a validator, sets
+            :attr:`create_func`.
+        :param clean_func: An optional function which can be used to clean the
+            incoming  value. Sets :attr:`clean_func`.
+        """
+        self.create_func = create_func
+        self.clean_func = clean_func
+        self.value = None
+        self.validator = None
+
+    def __get__(self, obj, obj_type):
+        return self.value
+
+    def __set__(self, obj, value):
+        if self.clean_func:
+            value = self.clean_func(obj, value)
+        self.value = value
+        if value is None:
+            new_validator = None
+        else:
+            new_validator = self.create_func(obj, value)
+        if new_validator is self.validator:
+            return
+        if self.validator:
+            try:
+                obj.validators.remove(self.validator)
+            except ValueError:
+                pass
+        if new_validator:
+            obj.validators.append(new_validator)
+        self.validator = new_validator
+
 class Field(object):
     widget = TextInput # Default widget to use when rendering this type of Field.
     hidden_widget = HiddenInput # Default widget to use when rendering this as "hidden".
@@ -180,12 +238,16 @@ class Field(object):
 
 class CharField(Field):
     def __init__(self, max_length=None, min_length=None, *args, **kwargs):
-        self.max_length, self.min_length = max_length, min_length
         super(CharField, self).__init__(*args, **kwargs)
-        if min_length is not None:
-            self.validators.append(validators.MinLengthValidator(min_length))
-        if max_length is not None:
-            self.validators.append(validators.MaxLengthValidator(max_length))
+        self.max_length, self.min_length = max_length, min_length
+
+    max_length = ValidatorAttribute(
+        create_func=lambda self, val: validators.MaxLengthValidator(val)
+    )
+
+    min_length = ValidatorAttribute(
+        create_func=lambda self, val: validators.MinLengthValidator(val)
+    )
 
     def to_python(self, value):
         "Returns a Unicode object."
@@ -206,13 +268,16 @@ class IntegerField(Field):
     }
 
     def __init__(self, max_value=None, min_value=None, *args, **kwargs):
-        self.max_value, self.min_value = max_value, min_value
         super(IntegerField, self).__init__(*args, **kwargs)
+        self.max_value, self.min_value = max_value, min_value
 
-        if max_value is not None:
-            self.validators.append(validators.MaxValueValidator(max_value))
-        if min_value is not None:
-            self.validators.append(validators.MinValueValidator(min_value))
+    max_value = ValidatorAttribute(
+        create_func=lambda self, val: validators.MaxValueValidator(val)
+    )
+
+    min_value = ValidatorAttribute(
+        create_func=lambda self, val: validators.MinValueValidator(val)
+    )
 
     def to_python(self, value):
         """
@@ -261,15 +326,19 @@ class DecimalField(Field):
         'max_whole_digits': _('Ensure that there are no more than %s digits before the decimal point.')
     }
 
-    def __init__(self, max_value=None, min_value=None, max_digits=None, decimal_places=None, *args, **kwargs):
+    def __init__(self, max_value=None, min_value=None, max_digits=None,
+                 decimal_places=None, *args, **kwargs):
+        super(DecimalField, self).__init__(*args, **kwargs)
         self.max_value, self.min_value = max_value, min_value
         self.max_digits, self.decimal_places = max_digits, decimal_places
-        Field.__init__(self, *args, **kwargs)
 
-        if max_value is not None:
-            self.validators.append(validators.MaxValueValidator(max_value))
-        if min_value is not None:
-            self.validators.append(validators.MinValueValidator(min_value))
+    max_value = ValidatorAttribute(
+        create_func=lambda self, val: validators.MaxValueValidator(val)
+    )
+
+    min_value = ValidatorAttribute(
+        create_func=lambda self, val: validators.MinValueValidator(val)
+    )
 
     def to_python(self, value):
         """
@@ -439,10 +508,17 @@ class RegexField(CharField):
             error_messages['invalid'] = error_message
             kwargs['error_messages'] = error_messages
         super(RegexField, self).__init__(max_length, min_length, *args, **kwargs)
+        self.regex = regex
+
+    def clean_regex_value(self, regex):
         if isinstance(regex, basestring):
             regex = re.compile(regex)
-        self.regex = regex
-        self.validators.append(validators.RegexValidator(regex=regex))
+        return regex
+
+    regex = ValidatorAttribute(
+        create_func=lambda obj, value: validators.RegexValidator(value),
+        clean_func=clean_regex_value
+    )
 
 class EmailField(CharField):
     default_error_messages = {
