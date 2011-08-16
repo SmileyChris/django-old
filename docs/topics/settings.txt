@@ -188,7 +188,7 @@ Then in your code, you can do the following::
         form = forms.PollForm()
 
         # Set the default poll name.
-        form.fields['name'].default = settings.POLLS_DEFAULT_NAME
+        form.fields['name'].initial = settings.POLLS_DEFAULT_NAME
 
         # You can use any standard project settings too, not just the defaults
         # defined in your subclass.
