@@ -162,6 +162,39 @@ Django apps. Just follow these conventions:
 For settings that are sequences, Django itself uses tuples, rather than lists,
 but this is only a convention.
 
+App settings
+------------
+
+.. versionadded:: 1.4
+
+You can use the ``AppSettings`` class to define default settings for your app
+that can be overridden in a project's settings module.
+
+For example, if you saved the following in a ``conf.py`` file inside of your
+``polls`` app directory::
+
+    from django.conf import AppSettings
+
+    class Settings(AppSettings):
+        POLLS_DEFAULT_NAME = 'A new poll'
+
+    settings = Settings()
+
+Then in your code, you can do the following::
+
+    from polls.conf import settings
+
+    def create_poll(request):
+        form = forms.PollForm()
+
+        # Set the default poll name.
+        form.fields['name'].default = settings.POLLS_DEFAULT_NAME
+
+        # You can use any standard project settings too, not just the defaults
+        # defined in your subclass.
+        if settings.DEBUG:
+            # ...
+
 .. _settings-without-django-settings-module:
 
 Using settings without setting DJANGO_SETTINGS_MODULE
@@ -220,7 +253,7 @@ In this example, default settings are taken from ``myapp_defaults``, and the
 The following example, which uses ``myapp_defaults`` as a positional argument,
 is equivalent::
 
-    settings.configure(myapp_defaults, DEBUG = True)
+    settings.configure(myapp_defaults, DEBUG=True)
 
 Normally, you will not need to override the defaults in this fashion. The
 Django defaults are sufficiently tame that you can safely use them. Be aware

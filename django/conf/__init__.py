@@ -172,6 +172,50 @@ class UserSettingsHolder(BaseSettings):
 settings = LazySettings()
 
 
+class DeclarativeDefaultSettingsMetaclass(type):
+    """
+    Metaclass that converts all uppercase attributes to a dictionary called
+    'defaults', taking into account parent class 'defaults' as well.
+    """
+    def __new__(cls, name, bases, attrs):
+        defaults = {}
+        for base in bases[::-1]:
+            if hasattr(base, 'defaults'):
+                defaults.update(base.defaults)
+
+        for attr in attrs.keys():
+            if attr.upper():
+                defaults[attr] = attrs.pop(attr)
+
+        new_class = super(DeclarativeDefaultSettingsMetaclass, cls)\
+            .__new__(cls, name, bases, attrs)
+        return new_class
+
+
+class BaseAppSettings(object):
+
+    def __getattr__(self, attr):
+        try:
+            value = getattr(settings, '%s%s' % (self.prefix, attr))
+        except AttributeError:
+            try:
+                value = self.defaults[attr]
+            except IndexError:
+                raise AttributeError
+
+        if callable(value):
+            value = value()
+
+        return value
+
+
+class AppSettings(BaseAppSettings):
+    """
+    A settings class to hold default applications which can be overridden by
+    the project-level settings module.
+    """
+    __metaclass__ = DeclarativeDefaultSettingsMetaclass
+
 
 def compat_patch_logging_config(logging_config):
     """
