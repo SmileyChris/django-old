@@ -9,6 +9,7 @@ from django.core.serializers import base
 from django.db import models, DEFAULT_DB_ALIAS
 from django.utils.encoding import smart_unicode, is_protected_type
 
+
 class Serializer(base.Serializer):
     """
     Serializes a QuerySet to basic Python objects.
@@ -28,21 +29,24 @@ class Serializer(base.Serializer):
 
     def end_object(self, obj):
         self.objects.append({
-            "model"  : smart_unicode(obj._meta),
-            "pk"     : smart_unicode(obj._get_pk_val(), strings_only=True),
-            "fields" : self._current
+            "model": smart_unicode(obj._meta),
+            "pk": self.get_field_value(obj, obj._meta.pk),
+            "fields": self._current
         })
         self._current = None
 
-    def handle_field(self, obj, field):
+    def get_field_value(self, obj, field):
         value = field._get_val_from_obj(obj)
         # Protected types (i.e., primitives like None, numbers, dates,
         # and Decimals) are passed through as is. All other values are
         # converted to string first.
         if is_protected_type(value):
-            self._current[field.name] = value
-        else:
-            self._current[field.name] = field.value_to_string(obj)
+            return value
+        return field.value_to_string(obj)
+
+
+    def handle_field(self, obj, field):
+        self._current[field.name] = self.get_field_value(obj, field)
 
     def handle_fk_field(self, obj, field):
         related = getattr(obj, field.name)
@@ -50,12 +54,8 @@ class Serializer(base.Serializer):
             if self.use_natural_keys and hasattr(related, 'natural_key'):
                 related = related.natural_key()
             else:
-                if field.rel.field_name == related._meta.pk.name:
-                    # Related to remote object via primary key
-                    related = related._get_pk_val()
-                else:
-                    # Related to remote object via other field
-                    related = smart_unicode(getattr(related, field.rel.field_name), strings_only=True)
+                rel_field = related._meta.get_field(field.rel.field_name)
+                related = self.get_field_value(related, rel_field)
         self._current[field.name] = related
 
     def handle_m2m_field(self, obj, field):
@@ -63,12 +63,13 @@ class Serializer(base.Serializer):
             if self.use_natural_keys and hasattr(field.rel.to, 'natural_key'):
                 m2m_value = lambda value: value.natural_key()
             else:
-                m2m_value = lambda value: smart_unicode(value._get_pk_val(), strings_only=True)
+                m2m_value = lambda value: self.get_field_value(value, value._meta.pk)
             self._current[field.name] = [m2m_value(related)
                                for related in getattr(obj, field.name).iterator()]
 
     def getvalue(self):
         return self.objects
+
 
 def Deserializer(object_list, **options):
     """
@@ -82,7 +83,7 @@ def Deserializer(object_list, **options):
     for d in object_list:
         # Look up the model and starting build a dict of data for it.
         Model = _get_model(d["model"])
-        data = {Model._meta.pk.attname : Model._meta.pk.to_python(d["pk"])}
+        data = {Model._meta.pk.attname: Model._meta.pk.to_python(d["pk"])}
         m2m_data = {}
 
         # Handle each field
@@ -128,6 +129,7 @@ def Deserializer(object_list, **options):
                 data[field.name] = field.to_python(field_value)
 
         yield base.DeserializedObject(Model(**data), m2m_data)
+
 
 def _get_model(model_identifier):
     """
