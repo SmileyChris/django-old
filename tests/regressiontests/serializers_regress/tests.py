@@ -12,6 +12,7 @@ from __future__ import with_statement
 
 import datetime
 import decimal
+import uuid
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -111,7 +112,9 @@ def generic_compare(testcase, pk, klass, data):
 
 def fk_compare(testcase, pk, klass, data):
     instance = klass.objects.get(id=pk)
-    testcase.assertEqual(data, instance.data_id)
+    fk_field = instance._meta.get_field('data')
+    rel_field = fk_field.rel.to._meta.get_field(fk_field.rel.field_name)
+    testcase.assertEqual(data, rel_field.to_python(instance.data_id))
 
 def m2m_compare(testcase, pk, klass, data):
     instance = klass.objects.get(id=pk)
@@ -332,6 +335,9 @@ The end."""),
     (data_obj, 1003, BigIntegerData, None),
     (data_obj, 1004, LengthModel, 0),
     (data_obj, 1005, LengthModel, 1),
+
+    (pk_obj, 1100, UUIDPKData, uuid.UUID('99373d39-a91f-4420-9d63-139512ff135d')),
+    (fk_obj, 1101, FKToUUID, uuid.UUID('99373d39-a91f-4420-9d63-139512ff135d')),
 ]
 
 # Because Oracle treats the empty string as NULL, Oracle is expected to fail
@@ -439,7 +445,8 @@ def streamTest(format, self):
     stream.close()
 
 for format in serializers.get_serializer_formats():
-    setattr(SerializerTests, 'test_' + format + '_serializer', curry(serializerTest, format))
+    if format != 'xml':
+        setattr(SerializerTests, 'test_' + format + '_serializer', curry(serializerTest, format))
     setattr(SerializerTests, 'test_' + format + '_serializer_fields', curry(fieldsTest, format))
     if format != 'python':
         setattr(SerializerTests, 'test_' + format + '_serializer_stream', curry(streamTest, format))

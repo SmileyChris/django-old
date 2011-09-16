@@ -9,6 +9,7 @@ from django.db import models
 from django.contrib.contenttypes import generic
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.localflavor.us.models import USStateField, PhoneNumberField
+from . import fields
 
 # The following classes are for testing basic data
 # marshalling, including NULL values, where allowed.
@@ -264,3 +265,10 @@ class LengthModel(models.Model):
 
     def __len__(self):
         return self.data
+
+# Tests for a non-standard field requiring a serialization method.
+class UUIDPKData(models.Model):
+    data = fields.UUIDField(primary_key=True)
+
+class FKToUUID(models.Model):
+    data = models.ForeignKey(UUIDPKData)
