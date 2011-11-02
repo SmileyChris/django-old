@@ -389,6 +389,8 @@ class TestInlinePermissions(TestCase):
 
 
 class TestNonUnicodeInline(TestCase):
+    urls = "regressiontests.admin_inlines.urls"
+
     def setUp(self):
         # create the admin user
         user = User()

@@ -153,7 +153,7 @@ class NonUnicodeBase(models.Model):
     @models.permalink
     def get_change_url(self):
         # {{ app_label }}_{{ model_name }}_change     object_id
-        return ("admin:%s_%s_change" % (self._meta.app_label,
+        return ('admin:%s_%s_change' % (self._meta.app_label,
             self.__class__.__name__)).lower(), (self.pk,)
 
 
