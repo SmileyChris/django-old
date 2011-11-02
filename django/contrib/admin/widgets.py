@@ -130,6 +130,13 @@ class ForeignKeyRawIdWidget(forms.TextInput):
 
     def render(self, name, value, attrs=None):
         rel_to = self.rel.to
+        # custom fields may need the to_python
+        # conversion in order to facilitate 
+        # unicode conversion
+        try:
+            value = self.rel.to._meta.get_field(self.rel.field_name).to_python(value)
+        except AttributeError:
+            pass# 'ManyToManyRel' object has no attribute 'field_name'
         if attrs is None:
             attrs = {}
         extra = []
@@ -139,7 +146,7 @@ class ForeignKeyRawIdWidget(forms.TextInput):
                                     (rel_to._meta.app_label,
                                     rel_to._meta.module_name),
                                     current_app=self.admin_site.name)
-
+        
             params = self.url_parameters()
             if params:
                 url = u'?' + u'&amp;'.join([u'%s=%s' % (k, v) for k, v in params.items()])
@@ -248,6 +255,13 @@ class RelatedFieldWidgetWrapper(forms.Widget):
 
     def render(self, name, value, *args, **kwargs):
         rel_to = self.rel.to
+        # custom fields may need the to_python
+        # conversion in order to facilitate 
+        # unicode conversion
+        try:
+            value = self.rel.to._meta.get_field(self.rel.field_name).to_python(value)
+        except AttributeError:
+            pass# 'ManyToManyRel' object has no attribute 'field_name'
         info = (rel_to._meta.app_label, rel_to._meta.object_name.lower())
         self.widget.choices = self.choices
         output = [self.widget.render(name, value, *args, **kwargs)]

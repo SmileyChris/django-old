@@ -341,6 +341,14 @@ class BaseForm(StrAndUnicode):
                     hidden_widget = field.hidden_widget()
                     initial_value = hidden_widget.value_from_datadict(
                         self.data, self.files, initial_prefixed_name)
+                # custom fields may need the to_python
+                # conversion in order to facilitate 
+                # unicode conversion
+                if isinstance(initial_value,list):
+                    # ManyToManyField uses a list
+                    initial_value = [field.to_python(v) for v in initial_value]
+                else:
+                    initial_value = field.to_python(initial_value)
                 if field.widget._has_changed(initial_value, data_value):
                     self._changed_data.append(name)
         return self._changed_data
