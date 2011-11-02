@@ -5,7 +5,6 @@ Testing of admin inline formsets.
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
-from django.core.urlresolvers import reverse 
 from .fields import UUIDField
 
 
@@ -139,43 +138,55 @@ class SottoCapo(models.Model):
     name = models.CharField(max_length=100)
     capo_famiglia = models.ForeignKey(CapoFamiglia, related_name='+')
 
-class Base(models.Model):
+
+# Models for non-unicode fields in inlines
+
+class NonUnicodeBase(models.Model):
     class Meta():
         abstract = True
-    
+
     binary_id = UUIDField(primary_key=True)
-    
+
     def __unicode__(self):
-        return u"%s.__unicode__() resulting pk: %s" % (self.__class__.__name__, self.pk)
-    
+        return u"%s(pk=%r)" % (self.__class__.__name__, self.pk)
+
+    @models.permalink
     def get_change_url(self):
         # {{ app_label }}_{{ model_name }}_change     object_id
-        viewname = "admin:%s_%s_change" % (self._meta.app_label,self.__class__.__name__)
-        return reverse(viewname.lower(), args=(self.pk,))
-    
-class A(Base):
+        return "admin:%s_%s_change" % (self._meta.app_label,
+            self.__class__.__name__).lower(), (self.pk,)
+
+
+class A(NonUnicodeBase):
     pass
 
-class B(Base):
+
+class B(NonUnicodeBase):
     relation = models.ForeignKey(A)
 
-class C(Base):
+
+class C(NonUnicodeBase):
     relation = models.OneToOneField(A)
-    
-class D(Base):
+
+
+class D(NonUnicodeBase):
     relation = models.ManyToManyField(A)
 
-class E(Base):
+
+class E(NonUnicodeBase):
     relation = models.ManyToManyField(A, through='F')
 
-class F(Base):
+
+class F(NonUnicodeBase):
     fk1 = models.ForeignKey(E)
-    fk2 = models.ForeignKey(A,related_name="fa_fk2")
-    m2m1 = models.ManyToManyField(A,related_name="fa_m2m1")
+    fk2 = models.ForeignKey(A, related_name="fa_fk2")
+    m2m1 = models.ManyToManyField(A, related_name="fa_m2m1")
     one1 = models.OneToOneField(B)
 
-class G(Base):
+
+class G(NonUnicodeBase):
     relation = models.ForeignKey(A)
-    
-class H(Base):
-    relation = models.ManyToManyField(A)
+
+
+class H(NonUnicodeBase):
+    relation = models.ManyToManyField(A)

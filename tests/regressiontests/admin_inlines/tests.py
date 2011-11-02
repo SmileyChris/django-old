@@ -10,11 +10,10 @@ from django.utils.encoding import force_unicode
 
 
 # local test models
+from . import models
 from .admin import InnerInline
 from .models import (Holder, Inner, Holder2, Inner2, Holder3, Inner3, Person,
     OutfitItem, Fashionista, Teacher, Parent, Child, Author, Book)
-
-from .models import A, B, C, D, E, F, G, H
 
 
 class TestInline(TestCase):
@@ -389,7 +388,7 @@ class TestInlinePermissions(TestCase):
         self.assertContains(response, 'id="id_inner2_set-0-DELETE"')
 
 
-class TestsFor17122(TestCase):
+class TestNonUnicodeInline(TestCase):
     def setUp(self):
         # create the admin user
         user = User()
@@ -404,54 +403,39 @@ class TestsFor17122(TestCase):
         self.assertEqual(result, True)
 
         # create instances to work with
-        a1 = A()
-        a2 = A()
-        a3 = A()
-        a1.save()
-        a2.save()
-        a3.save()
+        a1 = models.A.objects.create()
+        a2 = models.A.objects.create()
+        a3 = models.A.objects.create()
         self.a1 = a1
         self.a2 = a2
         self.a3 = a3
 
         # create foreign keys to test
-        b1 = B(relation=a1)
-        b2 = B(relation=a2)
-        b3 = B(relation=a3)
-        b1.save()
-        b2.save()
-        b3.save()
+        b1 = models.B.objects.create(relation=a1)
+        b2 = models.B.objects.create(relation=a2)
+        b3 = models.B.objects.create(relation=a3)
         self.b1 = b1
         self.b2 = b2
         self.b3 = b3
 
         # create one to ones for testing
-        c1 = C(relation=a1)
-        c1.save()
+        c1 = models.C.objects.create(relation=a1)
         self.c1 = c1
 
         # create many to manys for testing
-        d1 = D()
-        d1.save()
+        d1 = models.D.objects.create()
         d1.relation.add(a1)
         d1.relation.add(a2)
-        d1.save()
         self.d1 = d1
 
         # create relation for inline
-        e1 = E()
-        e1.save()
+        e1 = models.E.objects.create()
         self.e1 = e1
 
         # create inline
-        f1 = F()
-        f1.fk1 = self.e1
-        f1.fk2 = self.a1
-        f1.one1 = self.b1
-        f1.save()
+        f1 = models.F.objects.create(fk1=e1, fk2=a1, one1=b1)
         f1.m2m1.add(self.a1)
         f1.m2m1.add(self.a2)
-        f1.save()
         self.f1 = f1
 
         # query the admin
@@ -462,6 +446,7 @@ class TestsFor17122(TestCase):
         if (hasattr(response, 'render') and callable(response.render)
             and not response.is_rendered):
             response.render()
+
         content = response.content
 
         # create a dict for the inline parse
@@ -488,16 +473,13 @@ class TestsFor17122(TestCase):
         self.inline_response = response
 
         # create foreign keys to test raw id widget
-        g1 = G(relation=a1)
-        g1.save()
+        g1 = models.G.objects.create(relation=a1)
         self.g1 = g1
 
         # create m2m to test raw id widget
-        h1 = H()
-        h1.save()
+        h1 = models.H.objects.create()
         h1.relation.add(a1)
         h1.relation.add(a2)
-        h1.save()
         self.h1 = h1
 
     def tearDown(self):
@@ -511,7 +493,7 @@ class TestsFor17122(TestCase):
                     self.b1.relation
             )
         )
-        for a in A.objects.all().exclude(pk=self.b1.relation.pk):
+        for a in models.A.objects.all().exclude(pk=self.b1.relation.pk):
             self.assertContains(response,
                 '<option value="%s">%s</option>' % (
                         a.pk,
