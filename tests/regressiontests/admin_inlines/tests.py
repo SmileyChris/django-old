@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-from re import search,DOTALL
+from re import search, DOTALL
 
 from django.contrib.admin.helpers import InlineAdminForm
 from django.contrib.auth.models import User, Permission
@@ -14,7 +14,7 @@ from .admin import InnerInline
 from .models import (Holder, Inner, Holder2, Inner2, Holder3, Inner3, Person,
     OutfitItem, Fashionista, Teacher, Parent, Child, Author, Book)
 
-from .models import A,B,C,D,E,F,G,H
+from .models import A, B, C, D, E, F, G, H
 
 
 class TestInline(TestCase):
@@ -149,6 +149,7 @@ class TestInline(TestCase):
                 '<input id="id_-2-0-name" type="text" class="vTextField" '
                 'name="-2-0-name" maxlength="100" />')
 
+
 class TestInlineMedia(TestCase):
     urls = "regressiontests.admin_inlines.urls"
     fixtures = ['admin-views-users.xml']
@@ -186,6 +187,7 @@ class TestInlineMedia(TestCase):
         self.assertContains(response, 'my_awesome_admin_scripts.js')
         self.assertContains(response, 'my_awesome_inline_scripts.js')
 
+
 class TestInlineAdminForm(TestCase):
     urls = "regressiontests.admin_inlines.urls"
 
@@ -203,6 +205,7 @@ class TestInlineAdminForm(TestCase):
         iaf = InlineAdminForm(None, None, {}, {}, joe)
         parent_ct = ContentType.objects.get_for_model(Parent)
         self.assertEqual(iaf.original.content_type, parent_ct)
+
 
 class TestInlinePermissions(TestCase):
     """
@@ -357,7 +360,6 @@ class TestInlinePermissions(TestCase):
         self.assertContains(response, 'value="4" id="id_inner2_set-TOTAL_FORMS"')
         self.assertContains(response, '<input type="hidden" name="inner2_set-0-id" value="%i"' % self.inner2_id)
 
-
     def test_inline_change_fk_change_del_perm(self):
         permission = Permission.objects.get(codename='change_inner2', content_type=self.inner_ct)
         self.user.user_permissions.add(permission)
@@ -370,7 +372,6 @@ class TestInlinePermissions(TestCase):
         self.assertContains(response, 'value="1" id="id_inner2_set-TOTAL_FORMS"')
         self.assertContains(response, '<input type="hidden" name="inner2_set-0-id" value="%i"' % self.inner2_id)
         self.assertContains(response, 'id="id_inner2_set-0-DELETE"')
-
 
     def test_inline_change_fk_all_perms(self):
         permission = Permission.objects.get(codename='add_inner2', content_type=self.inner_ct)
@@ -387,6 +388,7 @@ class TestInlinePermissions(TestCase):
         self.assertContains(response, '<input type="hidden" name="inner2_set-0-id" value="%i"' % self.inner2_id)
         self.assertContains(response, 'id="id_inner2_set-0-DELETE"')
 
+
 class TestsFor17122(TestCase):
     def setUp(self):
         # create the admin user
@@ -396,11 +398,11 @@ class TestsFor17122(TestCase):
         user.is_staff = True
         user.is_superuser = True
         user.save()
-        
+
         # log in
         result = self.client.login(username="admin", password="admin")
         self.assertEqual(result, True)
-        
+
         # create instances to work with
         a1 = A()
         a2 = A()
@@ -411,7 +413,7 @@ class TestsFor17122(TestCase):
         self.a1 = a1
         self.a2 = a2
         self.a3 = a3
-        
+
         # create foreign keys to test
         b1 = B(relation=a1)
         b2 = B(relation=a2)
@@ -422,7 +424,7 @@ class TestsFor17122(TestCase):
         self.b1 = b1
         self.b2 = b2
         self.b3 = b3
-        
+
         # create one to ones for testing
         c1 = C(relation=a1)
         c1.save()
@@ -435,12 +437,12 @@ class TestsFor17122(TestCase):
         d1.relation.add(a2)
         d1.save()
         self.d1 = d1
-        
+
         # create relation for inline
         e1 = E()
         e1.save()
         self.e1 = e1
-        
+
         # create inline
         f1 = F()
         f1.fk1 = self.e1
@@ -451,45 +453,45 @@ class TestsFor17122(TestCase):
         f1.m2m1.add(self.a2)
         f1.save()
         self.f1 = f1
-        
+
         # query the admin
         response = self.client.get(self.e1.get_change_url())
-        
+
         # If the response supports deferred rendering and hasn't been rendered
         # yet, then ensure that it does get rendered before proceeding further.
         if (hasattr(response, 'render') and callable(response.render)
             and not response.is_rendered):
             response.render()
         content = response.content
-        
+
         # create a dict for the inline parse
         results = {}
-        
+
         # parse inline response content
-        for field_name in ['fk2','one1','m2m1']:
+        for field_name in ['fk2', 'one1', 'm2m1']:
             result = search(
-                    r'<select.*?name="f_set-0-%s".*?>(?P<%s>.*?)</select>'%(
-                            field_name,
-                            field_name
-                    ),
-                    content,
-                    DOTALL
+                r'<select.*?name="f_set-0-%s".*?>(?P<%s>.*?)</select>' % (
+                    field_name,
+                    field_name
+                ),
+                content,
+                DOTALL
             )
             if result is not None and len(result.groups(field_name)) == 1:
                 results[field_name] = result.groups(field_name)[0]
             else:
                 results[field_name] = ""
-            
+
         # store for tests
         self.inline_results = results
         self.inline_content = content
         self.inline_response = response
-        
+
         # create foreign keys to test raw id widget
         g1 = G(relation=a1)
         g1.save()
         self.g1 = g1
-        
+
         # create m2m to test raw id widget
         h1 = H()
         h1.save()
@@ -497,10 +499,10 @@ class TestsFor17122(TestCase):
         h1.relation.add(a2)
         h1.save()
         self.h1 = h1
-        
+
     def tearDown(self):
         self.client.logout()
-        
+
     def test_ForeignKey_render(self):
         response = self.client.get(self.b1.get_change_url())
         self.assertContains(response,
@@ -516,7 +518,7 @@ class TestsFor17122(TestCase):
                         a
                 )
             )
-    
+
     def test_OneToOneField_render(self):
         response = self.client.get(self.c1.get_change_url())
         self.assertContains(response,
@@ -532,7 +534,7 @@ class TestsFor17122(TestCase):
                         a
                 )
             )
-    
+
     def test_ManyToManyField_render(self):
         response = self.client.get(self.d1.get_change_url())
         others = A.objects.all()
@@ -551,11 +553,12 @@ class TestsFor17122(TestCase):
                         a
                 )
             )
-    
+
     def test_inline_hidden_input(self):
-        text = '<input type="hidden" name="f_set-__prefix__-fk1" value="%s" id="id_f_set-__prefix__-fk1" />' % self.f1.fk1.pk
+        text = '<input type="hidden" name="f_set-__prefix__-fk1" value="%s" '\
+            'id="id_f_set-__prefix__-fk1" />' % self.f1.fk1.pk
         self.assertContains(self.inline_response, text)
-        
+
     def test_inline_ForeignKey_render(self):
         response = HttpResponse(self.inline_results["fk2"])
         self.assertContains(response,
@@ -571,7 +574,7 @@ class TestsFor17122(TestCase):
                         a
                 )
             )
-            
+
     def test_inline_OneToOneField_render(self):
         response = HttpResponse(self.inline_results["one1"])
         self.assertContains(response,
@@ -587,7 +590,7 @@ class TestsFor17122(TestCase):
                         b
                 )
             )
-    
+
     def test_inline_ManyToManyField_render(self):
         response = HttpResponse(self.inline_results["m2m1"])
         others = A.objects.all()
@@ -606,25 +609,28 @@ class TestsFor17122(TestCase):
                         a
                 )
             )
-    
+
     def test_ForeignKeyRawIdWidget_render(self):
         response = self.client.get(self.g1.get_change_url())
         result = search(
-                r'<input.*?(name="relation".*?value="%s"|value="%s".*?name="relation").*?>'%(
-                        self.g1.relation.pk,
-                        self.g1.relation.pk,
-                ),
-                str(response),
-                DOTALL
+            r'<input.*?(name="relation".*?value="%s"|value="%s".*?'
+            'name="relation").*?>' % (
+                self.g1.relation.pk,
+                self.g1.relation.pk,
+            ),
+            str(response),
+            DOTALL
         )
-        self.assertTrue(result,"ForeignKeyRawIdWidget failed with non-unicode pk.")
-        
+        self.assertTrue(result, "ForeignKeyRawIdWidget failed with "
+            "non-unicode pk.")
+
     def test_ManyToManyRawIdWidget_render(self):
         response = self.client.get(self.h1.get_change_url())
         result = search(
-                r'<input.*?(?:name="relation".*?value="(?P<value1>[a-zA-Z0-9,-]*?)"|value="(?P<value2>[a-zA-Z0-9,-]*?)".*?name="relation").*?>',
-                str(response),
-                DOTALL
+            r'<input.*?(?:name="relation".*?value="(?P<value1>[a-zA-Z0-9,-]*?)'
+                '"|value="(?P<value2>[a-zA-Z0-9,-]*?)".*?name="relation").*?>',
+            str(response),
+            DOTALL
         )
         if result.group("value1"):
             value = result.group("value1")
@@ -635,12 +641,13 @@ class TestsFor17122(TestCase):
         observed_pks = set([force_unicode(pk) for pk in value.split(",")])
         relation_pks = set([force_unicode(h.pk) for h in self.h1.relation.all()])
         msg = "ManyToManyRawIdWidget did not render properly."
-        if hasattr(self,"longMessage") and not self.longMessage:
-            msg = "%s Enable longMessage to see the difference between rendered pks and stored pks." % msg
-        if hasattr(self,"assertSetEqual"):
+        if hasattr(self, "longMessage") and not self.longMessage:
+            msg = "%s Enable longMessage to see the difference between "\
+                "rendered pks and stored pks." % msg
+        if hasattr(self, "assertSetEqual"):
             self.assertSetEqual(observed_pks, relation_pks, msg)
         else:
             diff1 = observed_pks.difference(relation_pks)
             diff2 = relation_pks.difference(observed_pks)
             if diff1 or diff2:
-                self.fail(msg)
+                self.fail(msg)
