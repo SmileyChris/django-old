@@ -509,7 +509,7 @@ class TestNonUnicodeInline(TestCase):
                     self.c1.relation
             )
         )
-        for a in A.objects.all().exclude(pk=self.c1.relation.pk):
+        for a in models.A.objects.all().exclude(pk=self.c1.relation.pk):
             self.assertContains(response,
                 '<option value="%s">%s</option>' % (
                         a.pk,
@@ -519,7 +519,7 @@ class TestNonUnicodeInline(TestCase):
 
     def test_ManyToManyField_render(self):
         response = self.client.get(self.d1.get_change_url())
-        others = A.objects.all()
+        others = models.A.objects.all()
         for a in self.d1.relation.all():
             self.assertContains(response,
                 '<option value="%s" selected="selected">%s</option>' % (
@@ -549,7 +549,7 @@ class TestNonUnicodeInline(TestCase):
                     self.f1.fk2
             )
         )
-        for a in A.objects.all().exclude(pk=self.f1.fk2.pk):
+        for a in models.A.objects.all().exclude(pk=self.f1.fk2.pk):
             self.assertContains(response,
                 '<option value="%s">%s</option>' % (
                         a.pk,
@@ -565,7 +565,7 @@ class TestNonUnicodeInline(TestCase):
                     self.f1.one1
             )
         )
-        for b in B.objects.all().exclude(pk=self.f1.one1.pk):
+        for b in models.B.objects.all().exclude(pk=self.f1.one1.pk):
             self.assertContains(response,
                 '<option value="%s">%s</option>' % (
                         b.pk,
@@ -575,7 +575,7 @@ class TestNonUnicodeInline(TestCase):
 
     def test_inline_ManyToManyField_render(self):
         response = HttpResponse(self.inline_results["m2m1"])
-        others = A.objects.all()
+        others = models.A.objects.all()
         for a in self.f1.m2m1.all():
             self.assertContains(response,
                 '<option value="%s" selected="selected">%s</option>' % (

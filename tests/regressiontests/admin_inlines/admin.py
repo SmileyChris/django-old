@@ -126,6 +126,7 @@ class GAdmin(admin.ModelAdmin):
 class HAdmin(admin.ModelAdmin):
     raw_id_fields = ("relation",)
 
+
 site.register(models.TitleCollection, inlines=[TitleInline])
 # Test bug #12561 and #12778
 # only ModelAdmin media
