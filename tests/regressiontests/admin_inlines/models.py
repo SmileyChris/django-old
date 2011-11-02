@@ -5,6 +5,8 @@ Testing of admin inline formsets.
 from django.db import models
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes import generic
+from django.core.urlresolvers import reverse 
+from .fields import UUIDField
 
 
 class Parent(models.Model):
@@ -136,3 +138,44 @@ class Consigliere(models.Model):
 class SottoCapo(models.Model):
     name = models.CharField(max_length=100)
     capo_famiglia = models.ForeignKey(CapoFamiglia, related_name='+')
+
+class Base(models.Model):
+    class Meta():
+        abstract = True
+    
+    binary_id = UUIDField(primary_key=True)
+    
+    def __unicode__(self):
+        return u"%s.__unicode__() resulting pk: %s" % (self.__class__.__name__, self.pk)
+    
+    def get_change_url(self):
+        # {{ app_label }}_{{ model_name }}_change     object_id
+        viewname = "admin:%s_%s_change" % (self._meta.app_label,self.__class__.__name__)
+        return reverse(viewname.lower(), args=(self.pk,))
+    
+class A(Base):
+    pass
+
+class B(Base):
+    relation = models.ForeignKey(A)
+
+class C(Base):
+    relation = models.OneToOneField(A)
+    
+class D(Base):
+    relation = models.ManyToManyField(A)
+
+class E(Base):
+    relation = models.ManyToManyField(A, through='F')
+
+class F(Base):
+    fk1 = models.ForeignKey(E)
+    fk2 = models.ForeignKey(A,related_name="fa_fk2")
+    m2m1 = models.ManyToManyField(A,related_name="fa_m2m1")
+    one1 = models.OneToOneField(B)
+
+class G(Base):
+    relation = models.ForeignKey(A)
+    
+class H(Base):
+    relation = models.ManyToManyField(A)

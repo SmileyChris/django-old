@@ -108,6 +108,28 @@ class ConsigliereInline(admin.TabularInline):
 class SottoCapoInline(admin.TabularInline):
     model = SottoCapo
 
+class FAdminInline(admin.TabularInline):
+    model = F
+    fk_name = 'fk1'
+    extra = 0
+
+class EAdmin(admin.ModelAdmin):
+    inlines = (FAdminInline,)
+    
+class GAdmin(admin.ModelAdmin):
+    raw_id_fields = ("relation",)
+    
+class HAdmin(admin.ModelAdmin):
+    raw_id_fields = ("relation",)
+
+admin.site.register(A)
+admin.site.register(B)
+admin.site.register(C)
+admin.site.register(D)
+admin.site.register(E,EAdmin)
+admin.site.register(G,GAdmin)
+admin.site.register(H,HAdmin)
+
 
 site.register(TitleCollection, inlines=[TitleInline])
 # Test bug #12561 and #12778

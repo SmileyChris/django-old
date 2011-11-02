@@ -1,14 +1,20 @@
 from __future__ import absolute_import
+from re import search,DOTALL
 
 from django.contrib.admin.helpers import InlineAdminForm
 from django.contrib.auth.models import User, Permission
 from django.contrib.contenttypes.models import ContentType
+from django.http import HttpResponse
 from django.test import TestCase
+from django.utils.encoding import force_unicode
+
 
 # local test models
 from .admin import InnerInline
 from .models import (Holder, Inner, Holder2, Inner2, Holder3, Inner3, Person,
     OutfitItem, Fashionista, Teacher, Parent, Child, Author, Book)
+
+from .models import A,B,C,D,E,F,G,H
 
 
 class TestInline(TestCase):
@@ -380,3 +386,261 @@ class TestInlinePermissions(TestCase):
         self.assertContains(response, 'value="4" id="id_inner2_set-TOTAL_FORMS"')
         self.assertContains(response, '<input type="hidden" name="inner2_set-0-id" value="%i"' % self.inner2_id)
         self.assertContains(response, 'id="id_inner2_set-0-DELETE"')
+
+class TestsFor17122(TestCase):
+    def setUp(self):
+        # create the admin user
+        user = User()
+        user.username = "admin"
+        user.set_password("admin")
+        user.is_staff = True
+        user.is_superuser = True
+        user.save()
+        
+        # log in
+        result = self.client.login(username="admin", password="admin")
+        self.assertEqual(result, True)
+        
+        # create instances to work with
+        a1 = A()
+        a2 = A()
+        a3 = A()
+        a1.save()
+        a2.save()
+        a3.save()
+        self.a1 = a1
+        self.a2 = a2
+        self.a3 = a3
+        
+        # create foreign keys to test
+        b1 = B(relation=a1)
+        b2 = B(relation=a2)
+        b3 = B(relation=a3)
+        b1.save()
+        b2.save()
+        b3.save()
+        self.b1 = b1
+        self.b2 = b2
+        self.b3 = b3
+        
+        # create one to ones for testing
+        c1 = C(relation=a1)
+        c1.save()
+        self.c1 = c1
+
+        # create many to manys for testing
+        d1 = D()
+        d1.save()
+        d1.relation.add(a1)
+        d1.relation.add(a2)
+        d1.save()
+        self.d1 = d1
+        
+        # create relation for inline
+        e1 = E()
+        e1.save()
+        self.e1 = e1
+        
+        # create inline
+        f1 = F()
+        f1.fk1 = self.e1
+        f1.fk2 = self.a1
+        f1.one1 = self.b1
+        f1.save()
+        f1.m2m1.add(self.a1)
+        f1.m2m1.add(self.a2)
+        f1.save()
+        self.f1 = f1
+        
+        # query the admin
+        response = self.client.get(self.e1.get_change_url())
+        
+        # If the response supports deferred rendering and hasn't been rendered
+        # yet, then ensure that it does get rendered before proceeding further.
+        if (hasattr(response, 'render') and callable(response.render)
+            and not response.is_rendered):
+            response.render()
+        content = response.content
+        
+        # create a dict for the inline parse
+        results = {}
+        
+        # parse inline response content
+        for field_name in ['fk2','one1','m2m1']:
+            result = search(
+                    r'<select.*?name="f_set-0-%s".*?>(?P<%s>.*?)</select>'%(
+                            field_name,
+                            field_name
+                    ),
+                    content,
+                    DOTALL
+            )
+            if result is not None and len(result.groups(field_name)) == 1:
+                results[field_name] = result.groups(field_name)[0]
+            else:
+                results[field_name] = ""
+            
+        # store for tests
+        self.inline_results = results
+        self.inline_content = content
+        self.inline_response = response
+        
+        # create foreign keys to test raw id widget
+        g1 = G(relation=a1)
+        g1.save()
+        self.g1 = g1
+        
+        # create m2m to test raw id widget
+        h1 = H()
+        h1.save()
+        h1.relation.add(a1)
+        h1.relation.add(a2)
+        h1.save()
+        self.h1 = h1
+        
+    def tearDown(self):
+        self.client.logout()
+        
+    def test_ForeignKey_render(self):
+        response = self.client.get(self.b1.get_change_url())
+        self.assertContains(response,
+            '<option value="%s" selected="selected">%s</option>' % (
+                    self.b1.relation.pk,
+                    self.b1.relation
+            )
+        )
+        for a in A.objects.all().exclude(pk=self.b1.relation.pk):
+            self.assertContains(response,
+                '<option value="%s">%s</option>' % (
+                        a.pk,
+                        a
+                )
+            )
+    
+    def test_OneToOneField_render(self):
+        response = self.client.get(self.c1.get_change_url())
+        self.assertContains(response,
+            '<option value="%s" selected="selected">%s</option>' % (
+                    self.c1.relation.pk,
+                    self.c1.relation
+            )
+        )
+        for a in A.objects.all().exclude(pk=self.c1.relation.pk):
+            self.assertContains(response,
+                '<option value="%s">%s</option>' % (
+                        a.pk,
+                        a
+                )
+            )
+    
+    def test_ManyToManyField_render(self):
+        response = self.client.get(self.d1.get_change_url())
+        others = A.objects.all()
+        for a in self.d1.relation.all():
+            self.assertContains(response,
+                '<option value="%s" selected="selected">%s</option>' % (
+                        a.pk,
+                        a
+                )
+            )
+            others = others.exclude(pk=a.pk)
+        for a in others:
+            self.assertContains(response,
+                '<option value="%s">%s</option>' % (
+                        a.pk,
+                        a
+                )
+            )
+    
+    def test_inline_hidden_input(self):
+        text = '<input type="hidden" name="f_set-__prefix__-fk1" value="%s" id="id_f_set-__prefix__-fk1" />' % self.f1.fk1.pk
+        self.assertContains(self.inline_response, text)
+        
+    def test_inline_ForeignKey_render(self):
+        response = HttpResponse(self.inline_results["fk2"])
+        self.assertContains(response,
+            '<option value="%s" selected="selected">%s</option>' % (
+                    self.f1.fk2.pk,
+                    self.f1.fk2
+            )
+        )
+        for a in A.objects.all().exclude(pk=self.f1.fk2.pk):
+            self.assertContains(response,
+                '<option value="%s">%s</option>' % (
+                        a.pk,
+                        a
+                )
+            )
+            
+    def test_inline_OneToOneField_render(self):
+        response = HttpResponse(self.inline_results["one1"])
+        self.assertContains(response,
+            '<option value="%s" selected="selected">%s</option>' % (
+                    self.f1.one1.pk,
+                    self.f1.one1
+            )
+        )
+        for b in B.objects.all().exclude(pk=self.f1.one1.pk):
+            self.assertContains(response,
+                '<option value="%s">%s</option>' % (
+                        b.pk,
+                        b
+                )
+            )
+    
+    def test_inline_ManyToManyField_render(self):
+        response = HttpResponse(self.inline_results["m2m1"])
+        others = A.objects.all()
+        for a in self.f1.m2m1.all():
+            self.assertContains(response,
+                '<option value="%s" selected="selected">%s</option>' % (
+                        a.pk,
+                        a
+                )
+            )
+            others = others.exclude(pk=a.pk)
+        for a in others:
+            self.assertContains(response,
+                '<option value="%s">%s</option>' % (
+                        a.pk,
+                        a
+                )
+            )
+    
+    def test_ForeignKeyRawIdWidget_render(self):
+        response = self.client.get(self.g1.get_change_url())
+        result = search(
+                r'<input.*?(name="relation".*?value="%s"|value="%s".*?name="relation").*?>'%(
+                        self.g1.relation.pk,
+                        self.g1.relation.pk,
+                ),
+                str(response),
+                DOTALL
+        )
+        self.assertTrue(result,"ForeignKeyRawIdWidget failed with non-unicode pk.")
+        
+    def test_ManyToManyRawIdWidget_render(self):
+        response = self.client.get(self.h1.get_change_url())
+        result = search(
+                r'<input.*?(?:name="relation".*?value="(?P<value1>[a-zA-Z0-9,-]*?)"|value="(?P<value2>[a-zA-Z0-9,-]*?)".*?name="relation").*?>',
+                str(response),
+                DOTALL
+        )
+        if result.group("value1"):
+            value = result.group("value1")
+        elif result.group("value2"):
+            value = result.group("value2")
+        else:
+            value = ""
+        observed_pks = set([force_unicode(pk) for pk in value.split(",")])
+        relation_pks = set([force_unicode(h.pk) for h in self.h1.relation.all()])
+        msg = "ManyToManyRawIdWidget did not render properly."
+        if hasattr(self,"longMessage") and not self.longMessage:
+            msg = "%s Enable longMessage to see the difference between rendered pks and stored pks." % msg
+        if hasattr(self,"assertSetEqual"):
+            self.assertSetEqual(observed_pks, relation_pks, msg)
+        else:
+            diff1 = observed_pks.difference(relation_pks)
+            diff2 = relation_pks.difference(observed_pks)
+            if diff1 or diff2:
+                self.fail(msg)
