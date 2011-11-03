@@ -145,7 +145,7 @@ class NonUnicodeBase(models.Model):
     class Meta():
         abstract = True
 
-    binary_id = UUIDField(primary_key=True)
+    binary_id = UUIDField(primary_key=True, auto=True)
 
     def __unicode__(self):
         return u"%s(pk=%r)" % (self.__class__.__name__, self.pk)

@@ -966,9 +966,10 @@ class ModelChoiceField(ChoiceField):
     def prepare_value(self, value):
         if hasattr(value, '_meta'):
             if self.to_field_name:
-                return value.serializable_value(self.to_field_name)
+                field = value._meta.get_field(self.to_field_name)
             else:
-                return value.pk
+                field = value._meta.pk
+            return field.value_to_string(value)
         return super(ModelChoiceField, self).prepare_value(value)
 
     def to_python(self, value):

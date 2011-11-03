@@ -490,117 +490,75 @@ class TestNonUnicodeInline(TestCase):
     def test_ForeignKey_render(self):
         response = self.client.get(self.b1.get_change_url())
         self.assertContains(response,
-            '<option value="%s" selected="selected">%s</option>' % (
-                    self.b1.relation.pk,
-                    self.b1.relation
-            )
-        )
+            '<option value="%s" selected="selected">%s</option>' %
+                (self.b1.relation.pk.hex, self.b1.relation))
         for a in models.A.objects.all().exclude(pk=self.b1.relation.pk):
             self.assertContains(response,
-                '<option value="%s">%s</option>' % (
-                        a.pk,
-                        a
-                )
-            )
+                '<option value="%s">%s</option>' % (a.pk.hex, a))
 
     def test_OneToOneField_render(self):
         response = self.client.get(self.c1.get_change_url())
         self.assertContains(response,
-            '<option value="%s" selected="selected">%s</option>' % (
-                    self.c1.relation.pk,
-                    self.c1.relation
-            )
-        )
+            '<option value="%s" selected="selected">%s</option>' %
+                (self.c1.relation.pk.hex, self.c1.relation))
         for a in models.A.objects.all().exclude(pk=self.c1.relation.pk):
             self.assertContains(response,
-                '<option value="%s">%s</option>' % (
-                        a.pk,
-                        a
-                )
-            )
+                '<option value="%s">%s</option>' % (a.pk.hex, a))
 
     def test_ManyToManyField_render(self):
         response = self.client.get(self.d1.get_change_url())
         others = models.A.objects.all()
         for a in self.d1.relation.all():
             self.assertContains(response,
-                '<option value="%s" selected="selected">%s</option>' % (
-                        a.pk,
-                        a
-                )
-            )
+                '<option value="%s" selected="selected">%s</option>' %
+                    (a.pk.hex, a))
             others = others.exclude(pk=a.pk)
         for a in others:
             self.assertContains(response,
-                '<option value="%s">%s</option>' % (
-                        a.pk,
-                        a
-                )
-            )
+                '<option value="%s">%s</option>' % (a.pk.hex, a))
 
     def test_inline_hidden_input(self):
         text = '<input type="hidden" name="f_set-__prefix__-fk1" value="%s" '\
-            'id="id_f_set-__prefix__-fk1" />' % self.f1.fk1.pk
+            'id="id_f_set-__prefix__-fk1" />' % self.f1.fk1.pk.hex
         self.assertContains(self.inline_response, text)
 
     def test_inline_ForeignKey_render(self):
         response = HttpResponse(self.inline_results["fk2"])
         self.assertContains(response,
-            '<option value="%s" selected="selected">%s</option>' % (
-                    self.f1.fk2.pk,
-                    self.f1.fk2
-            )
-        )
+            '<option value="%s" selected="selected">%s</option>' %
+                (self.f1.fk2.pk.hex, self.f1.fk2))
         for a in models.A.objects.all().exclude(pk=self.f1.fk2.pk):
             self.assertContains(response,
-                '<option value="%s">%s</option>' % (
-                        a.pk,
-                        a
-                )
-            )
+                '<option value="%s">%s</option>' % (a.pk.hex, a))
 
     def test_inline_OneToOneField_render(self):
         response = HttpResponse(self.inline_results["one1"])
         self.assertContains(response,
-            '<option value="%s" selected="selected">%s</option>' % (
-                    self.f1.one1.pk,
-                    self.f1.one1
-            )
-        )
+            '<option value="%s" selected="selected">%s</option>' %
+                (self.f1.one1.pk.hex, self.f1.one1))
         for b in models.B.objects.all().exclude(pk=self.f1.one1.pk):
             self.assertContains(response,
-                '<option value="%s">%s</option>' % (
-                        b.pk,
-                        b
-                )
-            )
+                '<option value="%s">%s</option>' % (b.pk.hex, b))
 
     def test_inline_ManyToManyField_render(self):
         response = HttpResponse(self.inline_results["m2m1"])
         others = models.A.objects.all()
         for a in self.f1.m2m1.all():
             self.assertContains(response,
-                '<option value="%s" selected="selected">%s</option>' % (
-                        a.pk,
-                        a
-                )
-            )
+                '<option value="%s" selected="selected">%s</option>' %
+                    (a.pk.hex, a))
             others = others.exclude(pk=a.pk)
         for a in others:
             self.assertContains(response,
-                '<option value="%s">%s</option>' % (
-                        a.pk,
-                        a
-                )
-            )
+                '<option value="%s">%s</option>' % (a.pk.hex, a))
 
     def test_ForeignKeyRawIdWidget_render(self):
         response = self.client.get(self.g1.get_change_url())
         result = search(
             r'<input.*?(name="relation".*?value="%s"|value="%s".*?'
             'name="relation").*?>' % (
-                self.g1.relation.pk,
-                self.g1.relation.pk,
+                self.g1.relation.pk.hex,
+                self.g1.relation.pk.hex,
             ),
             str(response),
             DOTALL
@@ -623,7 +581,8 @@ class TestNonUnicodeInline(TestCase):
         else:
             value = ""
         observed_pks = set([force_unicode(pk) for pk in value.split(",")])
-        relation_pks = set([force_unicode(h.pk) for h in self.h1.relation.all()])
+        relation_pks = set([force_unicode(h.pk)
+            for h in self.h1.relation.all()])
         msg = "ManyToManyRawIdWidget did not render properly."
         if hasattr(self, "longMessage") and not self.longMessage:
             msg = "%s Enable longMessage to see the difference between "\
