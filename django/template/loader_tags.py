@@ -165,7 +165,11 @@ class IncludeNode(BaseIncludeNode):
     def render(self, context):
         try:
             template_name = self.template_name.resolve(context)
-            template = get_template(template_name)
+            if hasattr(template_name, 'render'):
+                # The variable itself is a template, no need to get find it.
+                template = template_name
+            else:
+                template = get_template(template_name)
             return self.render_template(template, context)
         except:
             if settings.TEMPLATE_DEBUG:

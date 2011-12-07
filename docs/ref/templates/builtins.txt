@@ -657,6 +657,12 @@ the variable ``template_name``::
 
     {% include template_name %}
 
+.. versionchanged:: 1.4
+   Render templates passed directly in context.
+
+You can also include the contents of a compiled
+:class:`~django.template.Template` that is on the template context.
+
 An included template is rendered with the context of the template that's
 including it. This example produces the output ``"Hello, John"``:
 

@@ -1046,6 +1046,9 @@ class Templates(unittest.TestCase):
             'include13': ('{% autoescape off %}{% include "basic-syntax03" %}{% endautoescape %}', {'first': '&'}, ('& --- ', '& --- INVALID')),
             'include14': ('{% autoescape off %}{% include "basic-syntax03" with first=var1 only %}{% endautoescape %}', {'var1': '&'}, ('& --- ', '& --- INVALID')),
 
+            # render template passed to context
+            'include15': ('{% include tmpl %}', {'tmpl': template.Template('{{ a }} --- {{ b }}'), 'a': 'A'}, ('A --- ', 'A --- INVALID')),
+
             'include-error01': ('{% include "basic-syntax01" with %}', {}, template.TemplateSyntaxError),
             'include-error02': ('{% include "basic-syntax01" with "no key" %}', {}, template.TemplateSyntaxError),
             'include-error03': ('{% include "basic-syntax01" with dotted.arg="error" %}', {}, template.TemplateSyntaxError),
