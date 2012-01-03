@@ -150,7 +150,8 @@ def normalize(pattern):
                             ch, escaped = pattern_iter.next()
                         param = ''.join(name)
                         result.append(Group(((u"%%(%s)s" % param), param)))
-                        #named backreferences have already consumed the parens
+                        # Named backreferences have already consumed the
+                        # parenthesis.
                         if terminal_char != ')':
                             walk_to_end(ch, pattern_iter)
             elif ch in "*?+{":
