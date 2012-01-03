@@ -149,11 +149,13 @@ def normalize(pattern):
                             name.append(ch)
                             ch, escaped = pattern_iter.next()
                         param = ''.join(name)
-                        result.append(Group(((u"%%(%s)s" % param), param)))
                         # Named backreferences have already consumed the
                         # parenthesis.
                         if terminal_char != ')':
+                            result.append(Group(((u"%%(%s)s" % param), param)))
                             walk_to_end(ch, pattern_iter)
+                        else:
+                            result.append(Group(((u"%%(%s)s" % param), None)))
             elif ch in "*?+{":
                 # Quanitifers affect the previous item in the result list.
                 count, ch = get_quantifier(ch, pattern_iter)
