@@ -128,3 +128,19 @@ def get_list_or_404(klass, *args, **kwargs):
         raise Http404('No %s matches the given query.' % queryset.model._meta.object_name)
     return obj_list
 
+def form_kwargs(request):
+    """
+    Returns a dictionary containing the standard form ``data`` and ``files``
+    arguments for POST requests.
+
+    Basic usage example::
+
+        form = MyForm(**form_kwargs(request))
+        if form.is_valid():
+            # process form
+            redirect('.')
+        render(request, 'form.html')
+    """
+    if request.method == 'POST':
+        return {'data': request.POST, 'files': request.FILES}
+    return {}
